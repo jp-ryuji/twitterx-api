@@ -27,7 +27,7 @@ Follow these steps to set up and run the project locally.
 
 ### Prerequisites
 
-* Node.js (v22.x or later)
+* Node.js (v22.x or later) - You can use `nvm` to manage Node.js versions. Run `nvm use` to automatically switch to the correct version specified in `.nvmrc`.
 * **pnpm** (`npm install -g pnpm`)
 * Docker and Docker Compose (for the database)
 
