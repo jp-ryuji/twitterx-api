@@ -1,0 +1,37 @@
+# EditorConfig is awesome: https://EditorConfig.org
+
+# top-most EditorConfig file
+root = true
+
+[*]
+# Set default charset
+charset = utf-8
+
+# Unix-style line endings
+end_of_line = lf
+
+# Ensure files end with a newline
+insert_final_newline = true
+
+# Trim trailing whitespace
+trim_trailing_whitespace = true
+
+# Use 2 spaces for indentation
+indent_style = space
+indent_size = 2
+
+# Use spaces for alignment
+insert_final_newline = true
+
+[*.{ts,tsx,js,jsx,json,yml,yaml,md,html,css,scss}]
+# Set charset for specific file types
+charset = utf-8
+
+[*.md]
+# Don't trim trailing whitespace in Markdown files
+trim_trailing_whitespace = false
+
+[{package.json,.prettierrc}]
+# Use 2 spaces for indentation in JSON files
+indent_style = space
+indent_size = 2
