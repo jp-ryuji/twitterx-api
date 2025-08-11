@@ -39,6 +39,7 @@ This document provides essential context for AI models interacting with this pro
     * `files`: kebab-case for modules and components (`app.controller.ts`)
 * **API Design:** (Inferred) As a NestJS project, it will follow RESTful principles. Endpoints are defined in controllers and are typically plural nouns. It uses standard HTTP verbs (GET, POST, PUT, DELETE). JSON is used for request/response bodies.
 * **Error Handling:** (Inferred) NestJS has built-in exception handling. Custom error handling can be implemented using exception filters.
+* **File Requirements:** All files must end with exactly one newline character to prevent "No newline at end of file" linting warnings and ensure POSIX compliance.
 
 ## 5. Key Files & Entrypoints
 
