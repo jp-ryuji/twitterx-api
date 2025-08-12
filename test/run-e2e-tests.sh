@@ -10,16 +10,17 @@ if [ -f .env.test.local ]; then
   set +a
 fi
 
-# Define the docker-compose file
+# Define the docker-compose file and project name
 DOCKER_COMPOSE_FILE="docker-compose.test.yml"
+PROJECT_NAME="twitterx-api-e2e-test"
 
 # Start the test database
-echo "Starting test database..."
-docker compose -f "$DOCKER_COMPOSE_FILE" up -d
+echo "Starting test database with project name: $PROJECT_NAME"
+docker compose -p "$PROJECT_NAME" -f "$DOCKER_COMPOSE_FILE" up -d
 
 # Wait for the database to be ready
 echo "Waiting for database to be ready..."
-until docker compose -f "$DOCKER_COMPOSE_FILE" exec postgres-test pg_isready -U "$TEST_DB_USERNAME" -d "$TEST_DB_NAME" > /dev/null 2>&1
+until docker compose -p "$PROJECT_NAME" -f "$DOCKER_COMPOSE_FILE" exec postgres-test pg_isready -U "$TEST_DB_USERNAME" -d "$TEST_DB_NAME" > /dev/null 2>&1
 do
     sleep 1
 done
@@ -29,13 +30,11 @@ export DATABASE_URL="postgresql://${TEST_DB_USERNAME}:${TEST_DB_PASSWORD}@localh
 
 # Run the tests
 jest --config ./test/jest-e2e.json
-
-# Store the exit code
 EXIT_CODE=$?
 
 # Stop the test database
 echo "Stopping test database..."
-docker compose -f "$DOCKER_COMPOSE_FILE" down
+docker compose -p "$PROJECT_NAME" -f "$DOCKER_COMPOSE_FILE" down
 
 # Exit with the same code as the tests
 exit $EXIT_CODE

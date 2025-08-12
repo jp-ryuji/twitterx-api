@@ -5,7 +5,7 @@
     "ts"
   ],
   "rootDir": ".",
-  "testEnvironment": "../dist/test/test-docker-environment.js",
+  "testEnvironment": "./test-docker-environment.ts",
   "testRegex": ".e2e-spec.ts$",
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
