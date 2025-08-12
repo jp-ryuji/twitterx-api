@@ -1,10 +1,11 @@
 import { execSync } from 'child_process';
+import { join } from 'path';
+
 import {
   TestEnvironment,
   JestEnvironmentConfig,
   EnvironmentContext,
 } from 'jest-environment-node';
-import { join } from 'path';
 
 class TestDockerEnvironment extends TestEnvironment {
   private dockerComposeFile: string;
