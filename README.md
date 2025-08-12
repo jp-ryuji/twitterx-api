@@ -27,7 +27,7 @@ Follow these steps to set up and run the project locally.
 
 ### Prerequisites
 
-* Node.js (v22.x or later)
+* Node.js (v22.x or later) - You can use `nvm` to manage Node.js versions. Run `nvm use` to automatically switch to the correct version specified in `.nvmrc`.
 * **pnpm** (`npm install -g pnpm`)
 * Docker and Docker Compose (for the database)
 
@@ -190,6 +190,7 @@ Configuration is loaded from environment variables defined in the `.env` file. S
 
 * **Package Manager**: This project strictly uses **pnpm**. Do not use `npm` or `yarn`.
 * **Linter & Formatter**: **ESLint** and **Prettier** are configured to enforce a consistent coding style. A pre-commit hook is set up to automatically lint and format staged files using **husky** and **lint-staged**.
+* **Editor Configuration**: An **.editorconfig** file is included to maintain consistent coding styles across different editors and IDEs.
 * **Prisma Workflow**:
     1. Modify your data models in `prisma/schema.prisma`.
     2. Run `pnpm prisma migrate dev --name <migration_name>` to create and apply a new migration.
