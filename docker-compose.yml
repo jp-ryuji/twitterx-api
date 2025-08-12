@@ -4,11 +4,16 @@ services:
       context: .
       dockerfile: Dockerfile
       target: development
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
     ports:
       - '${APP_PORT_EXTERNAL:-3002}:3000'
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_HOST=redis
