@@ -189,7 +189,7 @@ Configuration is loaded from environment variables defined in the `.env` file. S
 ## 🎨 7. Coding Conventions
 
 * **Package Manager**: This project strictly uses **pnpm**. Do not use `npm` or `yarn`.
-* **Linter & Formatter**: **ESLint** and **Prettier** are configured to enforce a consistent coding style. A pre-commit hook is set up to automatically lint and format staged files.
+* **Linter & Formatter**: **ESLint** and **Prettier** are configured to enforce a consistent coding style. A pre-commit hook is set up to automatically lint and format staged files using **husky** and **lint-staged**.
 * **Prisma Workflow**:
     1. Modify your data models in `prisma/schema.prisma`.
     2. Run `pnpm prisma migrate dev --name <migration_name>` to create and apply a new migration.
