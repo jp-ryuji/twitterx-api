@@ -10,3 +10,90 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+model User {
+  id                    String    @id @default(cuid())
+  username              String    @db.VarChar(15) // Original casing for display
+  usernameLower         String    @unique @db.VarChar(15) // Auto-generated lowercase version for uniqueness
+  email                 String?   // Original casing for display
+  emailLower            String?   @unique // Auto-generated lowercase version for uniqueness
+  displayName           String?   @db.VarChar(50)
+  bio                   String?   @db.VarChar(160)
+  location              String?
+  websiteUrl            String?
+  profilePicturePath    String?
+  headerImagePath       String?
+  birthDate             DateTime? @db.Date
+
+  // Authentication fields
+  password              String?
+  emailVerified         Boolean   @default(false)
+  emailVerificationToken String?
+  passwordResetToken    String?
+  passwordResetExpires  DateTime?
+
+  // Twitter-specific fields
+  followerCount         Int       @default(0)
+  followingCount        Int       @default(0)
+  tweetCount            Int       @default(0)
+  isVerified            Boolean   @default(false)
+  isPrivate             Boolean   @default(false)
+  isSuspended           Boolean   @default(false)
+  suspensionReason      String?
+
+  // Security fields
+  failedLoginAttempts   Int       @default(0)
+  lockedUntil           DateTime?
+  lastLoginAt           DateTime?
+  lastLoginIp           String?
+
+  // Timestamps
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  // Relations
+  sessions              Session[]
+  oauthProviders        UserOAuthProvider[]
+
+  @@map("users")
+  @@index([usernameLower]) // Index on lowercase for fast lookups
+  @@index([emailLower]) // Index on lowercase email for fast lookups
+}
+
+model Session {
+  id          String    @id @default(cuid())
+  userId      String
+  sessionToken String   @unique
+  deviceInfo  String?
+  ipAddress   String?
+  userAgent   String?
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+  lastUsedAt  DateTime  @default(now())
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model UserOAuthProvider {
+  id          String        @id @default(cuid())
+  userId      String
+  provider    AuthProvider
+  providerId  String        // External provider's user ID
+  email       String?       // Email from provider (may differ from user.email)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerId])
+  @@unique([userId, provider])
+  @@map("user_oauth_providers")
+}
+
+enum AuthProvider {
+  EMAIL
+  GOOGLE
+  // Future: TWITTER, FACEBOOK, GITHUB, etc.
+}
