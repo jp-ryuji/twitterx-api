@@ -75,6 +75,9 @@ importers:
       jest:
         specifier: ^30.0.0
         version: 30.0.5(@types/node@22.17.1)(ts-node@10.9.2(@types/node@22.17.1)(typescript@5.9.2))
+      jest-environment-node:
+        specifier: ^30.0.5
+        version: 30.0.5
       lint-staged:
         specifier: ^16.1.5
         version: 16.1.5

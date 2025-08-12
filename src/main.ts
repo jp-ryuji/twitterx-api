@@ -19,6 +19,7 @@ async function bootstrap() {
 
   // enable shutdown hook
   const prismaService = app.get(PrismaService);
-  await prismaService.enableShutdownHooks(app);
+  // eslint-disable-next-line @typescript-eslint/no-floating-promises
+  prismaService.enableShutdownHooks(app);
 }
 bootstrap();
