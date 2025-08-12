@@ -1,6 +1,8 @@
 import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+
 import { PrismaService } from '../prisma/prisma.service';
+
 import { HealthService } from './health.service';
 
 // Create a mock logger class that satisfies TypeScript
