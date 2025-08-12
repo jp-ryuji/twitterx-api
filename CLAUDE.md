@@ -67,4 +67,4 @@ This document provides essential context for AI models interacting with this pro
 * **Infrastructure (IaC):** No Infrastructure as Code directory was found.
 * **Security:** Be mindful of security. Do not hardcode secrets or keys. Ensure any changes to authentication logic are secure and vetted.
 * **Dependencies:** When adding a new dependency, use `pnpm add <package-name>` or `pnpm add -D <package-name>` for development dependencies.
-* **Commit Messages:** No specific commit message format is enforced. It is recommended to follow the Conventional Commits specification (e.g., `feat:`, `fix:`, `docs:`).
+* **Commit Messages:** No specific commit message format is enforced. It is recommended to follow the Conventional Commits specification (e.g., `feat:`, `fix:`, `docs:`). Commit package.json and lock file changes separately, including the names of added or deleted packages in the message (e.g., 'chore: add lodash', 'chore: remove moment.js').
