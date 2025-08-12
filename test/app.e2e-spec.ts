@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, VersioningType } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import * as request from 'supertest';
@@ -14,6 +14,13 @@ describe('AppController (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+
+    // Enable versioning to match main application configuration
+    app.enableVersioning({
+      type: VersioningType.URI,
+      defaultVersion: '1',
+    });
+
     await app.init();
   });
 
@@ -21,10 +28,10 @@ describe('AppController (e2e)', () => {
     await app.close();
   });
 
-  it('/ (GET)', () => {
+  it('/v1/ (GET)', () => {
     return request
       .default(app.getHttpServer())
-      .get('/')
+      .get('/v1/')
       .expect(200)
       .expect('Hello World!');
   });
