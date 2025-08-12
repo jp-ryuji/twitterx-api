@@ -1,3 +1,4 @@
+import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
@@ -5,6 +6,13 @@ import { PrismaService } from './prisma/prisma.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  
+  // Global validation pipe
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }));
 
   // Swagger setup
   const config = new DocumentBuilder()
@@ -19,7 +27,6 @@ async function bootstrap() {
 
   // enable shutdown hook
   const prismaService = app.get(PrismaService);
-  // eslint-disable-next-line @typescript-eslint/no-floating-promises
-  prismaService.enableShutdownHooks(app);
+  void prismaService.enableShutdownHooks(app);
 }
 bootstrap();
