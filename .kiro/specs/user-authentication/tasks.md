@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. Set up core authentication infrastructure and database models
+- [x] 1. Set up core authentication infrastructure and database models
   - Create Prisma schema with User, Session, and UserOAuthProvider models
   - Include case-insensitive fields (usernameLower, emailLower) for uniqueness
   - Generate Prisma client and run initial migration

@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import * as request from 'supertest';
 
+import { configureApp } from './../src/app.factory';
 import { AppModule } from './../src/app.module';
 
 describe('AppController (e2e)', () => {
@@ -14,6 +15,10 @@ describe('AppController (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+
+    // Apply the same configuration as the main application
+    configureApp(app);
+
     await app.init();
   });
 
@@ -21,10 +26,10 @@ describe('AppController (e2e)', () => {
     await app.close();
   });
 
-  it('/ (GET)', () => {
+  it('/v1/ (GET)', () => {
     return request
       .default(app.getHttpServer())
-      .get('/')
+      .get('/v1/')
       .expect(200)
       .expect('Hello World!');
   });
