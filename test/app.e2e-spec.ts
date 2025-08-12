@@ -1,8 +1,9 @@
-import { INestApplication, VersioningType } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import * as request from 'supertest';
 
+import { configureApp } from './../src/app.factory';
 import { AppModule } from './../src/app.module';
 
 describe('AppController (e2e)', () => {
@@ -15,11 +16,8 @@ describe('AppController (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
 
-    // Enable versioning to match main application configuration
-    app.enableVersioning({
-      type: VersioningType.URI,
-      defaultVersion: '1',
-    });
+    // Apply the same configuration as the main application
+    configureApp(app);
 
     await app.init();
   });
