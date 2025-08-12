@@ -55,20 +55,19 @@ Follow these steps to set up and run the project locally.
 
     The `.env` file is used by Docker Compose to set environment variables. Refer to `.env.example` for the available configuration options.
 
-4. **Start the database container:**
-    This command uses Docker Compose to start a PostgreSQL instance.
+4. **Start all application containers:**
 
     ```bash
     docker compose up -d
     ```
 
-    To stop the container, run:
+    To stop all containers, run:
 
     ```bash
     docker compose down
     ```
 
-    To stop the container and remove all associated volumes (useful for a clean restart), run:
+    To stop all containers and remove all associated volumes (useful for a clean restart), run:
 
     ```bash
     docker compose down -v
