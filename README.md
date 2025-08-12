@@ -55,20 +55,19 @@ Follow these steps to set up and run the project locally.
 
     The `.env` file is used by Docker Compose to set environment variables. Refer to `.env.example` for the available configuration options.
 
-4. **Start the database container:**
-    This command uses Docker Compose to start a PostgreSQL instance.
+4. **Start all application containers:**
 
     ```bash
     docker compose up -d
     ```
 
-    To stop the container, run:
+    To stop all containers, run:
 
     ```bash
     docker compose down
     ```
 
-    To stop the container and remove all associated volumes (useful for a clean restart), run:
+    To stop all containers and remove all associated volumes (useful for a clean restart), run:
 
     ```bash
     docker compose down -v
@@ -161,6 +160,7 @@ This UI allows for easy exploration and testing of all endpoints, such as:
 * `POST /v1/tweets`
 * `GET /v1/timeline`
 * `POST /v1/users/:userId/follow`
+* `GET /v1/healthz` (Health check endpoint)
 
 ## ✅ 5. Testing
 
@@ -175,11 +175,21 @@ pnpm run test
 # Run only unit tests
 pnpm run test:unit
 
-# Run end-to-end tests (requires a running test database)
+# Run end-to-end tests (automatically spins up and tears down a test database)
 pnpm run test:e2e
 
 # Generate a test coverage report
 pnpm run test:cov
+```
+
+### Test Database
+
+For end-to-end tests, a separate database is automatically spun up using docker-compose when running `pnpm run test:e2e`. The test database is automatically torn down after the tests complete, so developers don't need to manually manage the database lifecycle.
+
+To configure the test database, copy the `.env.test.local.example` file to `.env.test.local` and modify the variables as needed.
+
+```bash
+cp .env.test.local.example .env.test.local
 ```
 
 ## ⚙️ 6. Environment Variables
