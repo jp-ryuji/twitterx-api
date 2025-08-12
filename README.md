@@ -47,19 +47,31 @@ Follow these steps to set up and run the project locally.
     ```
 
 3. **Set up environment variables:**
-    Copy the example environment file. This file contains all the necessary configuration keys.
+    Copy the example environment file and adjust the values as needed.
 
     ```bash
     cp .env.example .env
     ```
 
-    Update the `.env` file with your database credentials and JWT secret.
+    The `.env` file is used by Docker Compose to set environment variables. Refer to `.env.example` for the available configuration options.
 
 4. **Start the database container:**
     This command uses Docker Compose to start a PostgreSQL instance.
 
     ```bash
-    docker-compose up -d
+    docker compose up -d
+    ```
+
+    To stop the container, run:
+
+    ```bash
+    docker compose down
+    ```
+
+    To stop the container and remove all associated volumes (useful for a clean restart), run:
+
+    ```bash
+    docker compose down -v
     ```
 
 5. **Run database migrations with Prisma:**
@@ -172,22 +184,7 @@ pnpm run test:cov
 
 ## ⚙️ 6. Environment Variables
 
-Configuration is loaded from environment variables defined in the `.env` file. See `.env.example` for the complete list of required variables.
-
-**`/.env.example`**
-
-```dotenv
-# Application Port
-PORT=3000
-
-# Database URL (Prisma convention)
-# Format: postgresql://USER:PASSWORD@HOST:PORT/DATABASE
-DATABASE_URL="postgresql://admin:password@localhost:5432/twitterx_dev"
-
-# JWT Configuration
-JWT_SECRET="your-strong-secret-for-jwt"
-JWT_EXPIRATION="1d"
-```
+Configuration is loaded from environment variables defined in the `.env` file. See `.env.example` for the complete list of available variables and their descriptions.
 
 ## 🎨 7. Coding Conventions
 
