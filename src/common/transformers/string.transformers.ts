@@ -3,14 +3,21 @@
  */
 
 /**
- * Core string normalization function - trims and optionally converts to lowercase
- * @param value - The string to normalize
- * @param toLowerCase - Whether to convert to lowercase
- * @returns Normalized string
+ * Trims whitespace from a string
+ * @param value - The string to trim
+ * @returns Trimmed string
  */
-export function normalizeString(value: string, toLowerCase = false): string {
-  const trimmed = value.trim();
-  return toLowerCase ? trimmed.toLowerCase() : trimmed;
+export function trimStringValue(value: string): string {
+  return value.trim();
+}
+
+/**
+ * Trims whitespace and converts to lowercase for case-insensitive operations
+ * @param value - The string to normalize
+ * @returns Trimmed and lowercased string
+ */
+export function normalizeStringValue(value: string): string {
+  return value.trim().toLowerCase();
 }
 
 /**
@@ -19,7 +26,7 @@ export function normalizeString(value: string, toLowerCase = false): string {
  * @returns Trimmed string or original value if not a string
  */
 export const trimString = ({ value }: { value: unknown }) =>
-  typeof value === 'string' ? normalizeString(value) : value;
+  typeof value === 'string' ? trimStringValue(value) : value;
 
 /**
  * Safely trims whitespace and converts to lowercase for case-insensitive handling
@@ -27,4 +34,4 @@ export const trimString = ({ value }: { value: unknown }) =>
  * @returns Trimmed and lowercased string or original value if not a string
  */
 export const trimAndLowercase = ({ value }: { value: unknown }) =>
-  typeof value === 'string' ? normalizeString(value, true) : value;
+  typeof value === 'string' ? normalizeStringValue(value) : value;

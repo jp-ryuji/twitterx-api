@@ -1,34 +1,57 @@
 import {
-  normalizeString,
+  trimStringValue,
+  normalizeStringValue,
   trimString,
   trimAndLowercase,
 } from './string.transformers';
 
 describe('String Transformers', () => {
-  describe('normalizeString', () => {
-    it('should trim whitespace by default', () => {
-      expect(normalizeString('  hello world  ')).toBe('hello world');
-    });
-
-    it('should trim and convert to lowercase when requested', () => {
-      expect(normalizeString('  HELLO World  ', true)).toBe('hello world');
-    });
-
-    it('should only trim when toLowerCase is false', () => {
-      expect(normalizeString('  HELLO World  ', false)).toBe('HELLO World');
+  describe('trimStringValue', () => {
+    it('should trim whitespace from strings', () => {
+      expect(trimStringValue('  hello world  ')).toBe('hello world');
     });
 
     it('should handle empty strings', () => {
-      expect(normalizeString('')).toBe('');
-      expect(normalizeString('   ')).toBe('');
+      expect(trimStringValue('')).toBe('');
+      expect(trimStringValue('   ')).toBe('');
     });
 
-    it('should handle strings with mixed case', () => {
-      expect(normalizeString('John.DOE@EXAMPLE.COM', true)).toBe(
+    it('should preserve case', () => {
+      expect(trimStringValue('  HELLO World  ')).toBe('HELLO World');
+    });
+
+    it('should handle strings with only leading whitespace', () => {
+      expect(trimStringValue('  hello')).toBe('hello');
+    });
+
+    it('should handle strings with only trailing whitespace', () => {
+      expect(trimStringValue('hello  ')).toBe('hello');
+    });
+  });
+
+  describe('normalizeStringValue', () => {
+    it('should trim whitespace and convert to lowercase', () => {
+      expect(normalizeStringValue('  HELLO World  ')).toBe('hello world');
+    });
+
+    it('should handle mixed case with whitespace', () => {
+      expect(normalizeStringValue('  John.DOE@EXAMPLE.COM  ')).toBe(
         'john.doe@example.com',
       );
-      expect(normalizeString('John.DOE@EXAMPLE.COM', false)).toBe(
-        'John.DOE@EXAMPLE.COM',
+    });
+
+    it('should handle empty strings', () => {
+      expect(normalizeStringValue('')).toBe('');
+      expect(normalizeStringValue('   ')).toBe('');
+    });
+
+    it('should handle strings that are already lowercase', () => {
+      expect(normalizeStringValue('  hello world  ')).toBe('hello world');
+    });
+
+    it('should handle strings with special characters', () => {
+      expect(normalizeStringValue('  User@DOMAIN.COM  ')).toBe(
+        'user@domain.com',
       );
     });
   });
