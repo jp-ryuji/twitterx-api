@@ -12,11 +12,7 @@ import {
   IsDateString,
 } from 'class-validator';
 
-// Helper functions for safe string transformation
-const trimString = ({ value }: { value: unknown }) =>
-  typeof value === 'string' ? value.trim() : value;
-const trimAndLowercase = ({ value }: { value: unknown }) =>
-  typeof value === 'string' ? value.trim().toLowerCase() : value;
+import { trimString, trimAndLowercase } from '../../common/transformers';
 
 export class SignUpDto {
   @ApiProperty({

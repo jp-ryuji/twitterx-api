@@ -3,9 +3,7 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsString, IsOptional, MaxLength, IsUrl } from 'class-validator';
 
-// Helper function for safe string transformation
-const trimString = ({ value }: { value: unknown }) =>
-  typeof value === 'string' ? value.trim() : value;
+import { trimString } from '../../common/transformers';
 
 export class UpdateProfileDto {
   @ApiPropertyOptional({
