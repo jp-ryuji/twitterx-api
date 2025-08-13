@@ -2,6 +2,7 @@ import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { RedisService } from '../redis/redis.service';
 
 import { HealthService } from './health.service';
 
@@ -13,6 +14,7 @@ class MockLogger extends Logger {
 describe('HealthService', () => {
   let service: HealthService;
   let prismaService: PrismaService;
+  let redisService: RedisService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -24,11 +26,18 @@ describe('HealthService', () => {
             $queryRaw: jest.fn(),
           },
         },
+        {
+          provide: RedisService,
+          useValue: {
+            ping: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<HealthService>(HealthService);
     prismaService = module.get<PrismaService>(PrismaService);
+    redisService = module.get<RedisService>(RedisService);
 
     // Replace the service's logger with our mock
     const mockLogger = new MockLogger();
@@ -62,6 +71,36 @@ describe('HealthService', () => {
       );
 
       const result = await service.checkDatabaseHealth();
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('checkRedisHealth', () => {
+    it('should return true when Redis ping succeeds', async () => {
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      const mockFn = redisService.ping as jest.Mock;
+      void mockFn.mockResolvedValueOnce('PONG');
+
+      const result = await service.checkRedisHealth();
+      expect(result).toBe(true);
+      expect(mockFn).toHaveBeenCalled();
+    });
+
+    it('should return false when Redis ping fails', async () => {
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      const mockFn = redisService.ping as jest.Mock;
+      void mockFn.mockRejectedValueOnce(new Error('Redis connection failed'));
+
+      const result = await service.checkRedisHealth();
+      expect(result).toBe(false);
+    });
+
+    it('should return false when Redis ping returns unexpected response', async () => {
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      const mockFn = redisService.ping as jest.Mock;
+      void mockFn.mockResolvedValueOnce('UNEXPECTED');
+
+      const result = await service.checkRedisHealth();
       expect(result).toBe(false);
     });
   });
