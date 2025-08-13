@@ -87,19 +87,16 @@ describe('RedisService', () => {
       await service.onModuleInit();
 
       // Simulate error event
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
       const errorCall = mockRedisClient.on.mock.calls.find(
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         (call) => call[0] === 'error',
       );
       const testError = new Error('Connection failed');
       if (errorCall) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         const errorHandler = errorCall[1] as (error: Error) => void;
         errorHandler(testError);
       }
 
-      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(Logger.prototype.error).toHaveBeenCalledWith(
         'Redis Client Error',
         testError,
@@ -158,7 +155,7 @@ describe('RedisService', () => {
         const result = await service.getSession(sessionId);
 
         expect(result).toBeNull();
-        // eslint-disable-next-line @typescript-eslint/unbound-method
+
         expect(Logger.prototype.error).toHaveBeenCalledWith(
           `Failed to parse session data for ${sessionId}:`,
           expect.any(Error),
@@ -302,7 +299,7 @@ describe('RedisService', () => {
 
         expect(result.count).toBe(currentCount);
         expect(result.isLimitExceeded).toBe(true);
-        // eslint-disable-next-line @typescript-eslint/unbound-method
+
         expect(Logger.prototype.warn).toHaveBeenCalledWith(
           `Rate limit exceeded for key: ${key}, count: ${currentCount}`,
         );

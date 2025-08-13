@@ -1,0 +1,496 @@
+import { Logger } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+
+import { PrismaService } from '../prisma/prisma.service';
+
+import { AuthService } from './auth.service';
+import { SignUpDto } from './dto';
+import {
+  UsernameUnavailableException,
+  EmailAlreadyExistsException,
+  InvalidPasswordException,
+} from './exceptions';
+import { PasswordService } from './services';
+
+describe('AuthService', () => {
+  let service: AuthService;
+  let prismaService: jest.Mocked<PrismaService>;
+  let passwordService: jest.Mocked<PasswordService>;
+
+  const mockUser = {
+    id: 'test-user-id',
+    username: 'testuser',
+    usernameLower: 'testuser',
+    email: 'test@example.com',
+    emailLower: 'test@example.com',
+    displayName: 'Test User',
+    bio: null,
+    location: null,
+    websiteUrl: null,
+    profilePicturePath: null,
+    headerImagePath: null,
+    birthDate: new Date('1990-01-01'),
+    password: 'hashed-password',
+    emailVerified: false,
+    emailVerificationToken: 'verification-token',
+    passwordResetToken: null,
+    passwordResetExpires: null,
+    followerCount: 0,
+    followingCount: 0,
+    tweetCount: 0,
+    isVerified: false,
+    isPrivate: false,
+    isSuspended: false,
+    suspensionReason: null,
+    failedLoginAttempts: 0,
+    lockedUntil: null,
+    lastLoginAt: null,
+    lastLoginIp: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  beforeEach(async () => {
+    const mockPrismaService = {
+      user: {
+        findUnique: jest.fn(),
+        create: jest.fn(),
+      },
+    };
+
+    const mockPasswordService = {
+      validatePasswordStrength: jest.fn(),
+      hashPassword: jest.fn(),
+      generateSecureToken: jest.fn(),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AuthService,
+        {
+          provide: PrismaService,
+          useValue: mockPrismaService,
+        },
+        {
+          provide: PasswordService,
+          useValue: mockPasswordService,
+        },
+      ],
+    }).compile();
+
+    service = module.get<AuthService>(AuthService);
+    prismaService = module.get(PrismaService);
+    passwordService = module.get(PasswordService);
+
+    // Mock logger to avoid console output during tests
+    jest.spyOn(Logger.prototype, 'log').mockImplementation();
+    jest.spyOn(Logger.prototype, 'error').mockImplementation();
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('registerUser', () => {
+    const validSignUpDto: SignUpDto = {
+      username: 'testuser',
+      email: 'test@example.com',
+      password: 'ValidPassword123!',
+      displayName: 'Test User',
+      birthDate: '1990-01-01',
+    };
+
+    it('should successfully register a user with email', async () => {
+      // Arrange
+      passwordService.validatePasswordStrength.mockReturnValue({
+        isValid: true,
+        errors: [],
+      });
+      prismaService.user.findUnique.mockResolvedValue(null); // No existing user
+      passwordService.hashPassword.mockResolvedValue('hashed-password');
+      passwordService.generateSecureToken.mockReturnValue('verification-token');
+      prismaService.user.create.mockResolvedValue(mockUser);
+
+      // Act
+      const result = await service.registerUser(validSignUpDto);
+
+      // Assert
+      expect(result).toEqual({
+        user: expect.objectContaining({
+          id: 'test-user-id',
+          username: 'testuser',
+          email: 'test@example.com',
+          displayName: 'Test User',
+        }),
+        emailVerificationToken: 'verification-token',
+      });
+
+      expect(passwordService.validatePasswordStrength).toHaveBeenCalledWith(
+        'ValidPassword123!',
+      );
+      expect(prismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { usernameLower: 'testuser' },
+      });
+      expect(prismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { emailLower: 'test@example.com' },
+      });
+      expect(passwordService.hashPassword).toHaveBeenCalledWith(
+        'ValidPassword123!',
+      );
+      expect(passwordService.generateSecureToken).toHaveBeenCalled();
+      expect(prismaService.user.create).toHaveBeenCalledWith({
+        data: {
+          username: 'testuser',
+          usernameLower: 'testuser',
+          email: 'test@example.com',
+          emailLower: 'test@example.com',
+          password: 'hashed-password',
+          displayName: 'Test User',
+          birthDate: new Date('1990-01-01'),
+          emailVerificationToken: 'verification-token',
+          emailVerified: false,
+        },
+      });
+    });
+
+    it('should successfully register a user without email', async () => {
+      // Arrange
+      const signUpDtoWithoutEmail = { ...validSignUpDto };
+      delete signUpDtoWithoutEmail.email;
+
+      passwordService.validatePasswordStrength.mockReturnValue({
+        isValid: true,
+        errors: [],
+      });
+      prismaService.user.findUnique.mockResolvedValue(null);
+      passwordService.hashPassword.mockResolvedValue('hashed-password');
+
+      const userWithoutEmail = { ...mockUser, email: null, emailLower: null };
+      prismaService.user.create.mockResolvedValue(userWithoutEmail);
+
+      // Act
+      const result = await service.registerUser(signUpDtoWithoutEmail);
+
+      // Assert
+      expect(result).toEqual({
+        user: expect.objectContaining({
+          username: 'testuser',
+          email: null,
+        }),
+        emailVerificationToken: undefined,
+      });
+
+      expect(passwordService.generateSecureToken).not.toHaveBeenCalled();
+      expect(prismaService.user.create).toHaveBeenCalledWith({
+        data: {
+          username: 'testuser',
+          usernameLower: 'testuser',
+          email: null,
+          emailLower: null,
+          password: 'hashed-password',
+          displayName: 'Test User',
+          birthDate: new Date('1990-01-01'),
+          emailVerificationToken: undefined,
+          emailVerified: true, // No email means "verified"
+        },
+      });
+    });
+
+    it('should handle case-insensitive username checking', async () => {
+      // Arrange
+      const signUpDtoWithMixedCase = {
+        ...validSignUpDto,
+        username: 'TestUser',
+      };
+
+      passwordService.validatePasswordStrength.mockReturnValue({
+        isValid: true,
+        errors: [],
+      });
+      prismaService.user.findUnique.mockResolvedValue(null);
+      passwordService.hashPassword.mockResolvedValue('hashed-password');
+      passwordService.generateSecureToken.mockReturnValue('verification-token');
+      prismaService.user.create.mockResolvedValue({
+        ...mockUser,
+        username: 'TestUser',
+        usernameLower: 'testuser',
+      });
+
+      // Act
+      const result = await service.registerUser(signUpDtoWithMixedCase);
+
+      // Assert
+      expect(prismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { usernameLower: 'testuser' },
+      });
+      expect(prismaService.user.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          username: 'TestUser',
+          usernameLower: 'testuser',
+        }),
+      });
+    });
+
+    it('should handle case-insensitive email checking', async () => {
+      // Arrange
+      const signUpDtoWithMixedCaseEmail = {
+        ...validSignUpDto,
+        email: 'Test@Example.COM',
+      };
+
+      passwordService.validatePasswordStrength.mockReturnValue({
+        isValid: true,
+        errors: [],
+      });
+      prismaService.user.findUnique.mockResolvedValue(null);
+      passwordService.hashPassword.mockResolvedValue('hashed-password');
+      passwordService.generateSecureToken.mockReturnValue('verification-token');
+      prismaService.user.create.mockResolvedValue({
+        ...mockUser,
+        email: 'test@example.com',
+        emailLower: 'test@example.com',
+      });
+
+      // Act
+      const result = await service.registerUser(signUpDtoWithMixedCaseEmail);
+
+      // Assert
+      expect(prismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { emailLower: 'test@example.com' },
+      });
+      expect(prismaService.user.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          email: 'test@example.com',
+          emailLower: 'test@example.com',
+        }),
+      });
+    });
+
+    it('should throw InvalidPasswordException for weak password', async () => {
+      // Arrange
+      passwordService.validatePasswordStrength.mockReturnValue({
+        isValid: false,
+        errors: ['Password must contain at least one uppercase letter'],
+      });
+
+      // Act & Assert
+      await expect(service.registerUser(validSignUpDto)).rejects.toThrow(
+        InvalidPasswordException,
+      );
+
+      expect(passwordService.validatePasswordStrength).toHaveBeenCalledWith(
+        'ValidPassword123!',
+      );
+      expect(prismaService.user.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('should throw UsernameUnavailableException when username exists', async () => {
+      // Arrange
+      passwordService.validatePasswordStrength.mockReturnValue({
+        isValid: true,
+        errors: [],
+      });
+      prismaService.user.findUnique
+        .mockResolvedValueOnce(mockUser) // Username exists
+        .mockResolvedValue(null); // Suggestions don't exist
+
+      // Act & Assert
+      await expect(service.registerUser(validSignUpDto)).rejects.toThrow(
+        UsernameUnavailableException,
+      );
+
+      expect(prismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { usernameLower: 'testuser' },
+      });
+    });
+
+    it('should throw EmailAlreadyExistsException when email exists', async () => {
+      // Arrange
+      passwordService.validatePasswordStrength.mockReturnValue({
+        isValid: true,
+        errors: [],
+      });
+      prismaService.user.findUnique
+        .mockResolvedValueOnce(null) // Username doesn't exist
+        .mockResolvedValueOnce(mockUser); // Email exists
+
+      // Act & Assert
+      await expect(service.registerUser(validSignUpDto)).rejects.toThrow(
+        EmailAlreadyExistsException,
+      );
+
+      expect(prismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { usernameLower: 'testuser' },
+      });
+      expect(prismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { emailLower: 'test@example.com' },
+      });
+    });
+
+    it('should generate username suggestions when username is taken', async () => {
+      // Arrange
+      passwordService.validatePasswordStrength.mockReturnValue({
+        isValid: true,
+        errors: [],
+      });
+      prismaService.user.findUnique
+        .mockResolvedValueOnce(mockUser) // Original username exists
+        .mockResolvedValueOnce(null) // testuser1 doesn't exist
+        .mockResolvedValueOnce(null) // testuser2 doesn't exist
+        .mockResolvedValueOnce(null); // testuser3 doesn't exist
+
+      // Act & Assert
+      const error = await service.registerUser(validSignUpDto).catch((e) => e);
+
+      expect(error).toBeInstanceOf(UsernameUnavailableException);
+      expect(error.getResponse()).toEqual({
+        message: "Username 'testuser' is not available",
+        suggestions: ['testuser1', 'testuser2', 'testuser3'],
+        code: 'USERNAME_UNAVAILABLE',
+      });
+    });
+
+    it('should sanitize input data', async () => {
+      // Arrange
+      const signUpDtoWithUnsafeData: SignUpDto = {
+        username: '  test_user  ',
+        email: '  TEST@EXAMPLE.COM  ',
+        password: 'ValidPassword123!',
+        displayName: '  Test User  ',
+      };
+
+      passwordService.validatePasswordStrength.mockReturnValue({
+        isValid: true,
+        errors: [],
+      });
+      prismaService.user.findUnique.mockResolvedValue(null);
+      passwordService.hashPassword.mockResolvedValue('hashed-password');
+      passwordService.generateSecureToken.mockReturnValue('verification-token');
+      prismaService.user.create.mockResolvedValue(mockUser);
+
+      // Act
+      await service.registerUser(signUpDtoWithUnsafeData);
+
+      // Assert
+      expect(prismaService.user.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          username: 'test_user',
+          usernameLower: 'test_user',
+          email: 'test@example.com',
+          emailLower: 'test@example.com',
+          displayName: 'Test User',
+        }),
+      });
+    });
+
+    it('should handle database errors gracefully', async () => {
+      // Arrange
+      passwordService.validatePasswordStrength.mockReturnValue({
+        isValid: true,
+        errors: [],
+      });
+      prismaService.user.findUnique.mockResolvedValue(null);
+      passwordService.hashPassword.mockResolvedValue('hashed-password');
+      passwordService.generateSecureToken.mockReturnValue('verification-token');
+      prismaService.user.create.mockRejectedValue(new Error('Database error'));
+
+      // Act & Assert
+      await expect(service.registerUser(validSignUpDto)).rejects.toThrow(
+        'Database error',
+      );
+
+      expect(Logger.prototype.error).toHaveBeenCalledWith(
+        'Failed to register user: Database error',
+        expect.any(String),
+      );
+    });
+  });
+
+  describe('isUsernameAvailable', () => {
+    it('should return true when username is available', async () => {
+      // Arrange
+      prismaService.user.findUnique.mockResolvedValue(null);
+
+      // Act
+      const result = await service.isUsernameAvailable('newuser');
+
+      // Assert
+      expect(result).toBe(true);
+      expect(prismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { usernameLower: 'newuser' },
+      });
+    });
+
+    it('should return false when username is taken', async () => {
+      // Arrange
+      prismaService.user.findUnique.mockResolvedValue(mockUser);
+
+      // Act
+      const result = await service.isUsernameAvailable('testuser');
+
+      // Assert
+      expect(result).toBe(false);
+      expect(prismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { usernameLower: 'testuser' },
+      });
+    });
+
+    it('should handle case-insensitive checking', async () => {
+      // Arrange
+      prismaService.user.findUnique.mockResolvedValue(null);
+
+      // Act
+      const result = await service.isUsernameAvailable('TestUser');
+
+      // Assert
+      expect(result).toBe(true);
+      expect(prismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { usernameLower: 'testuser' },
+      });
+    });
+  });
+
+  describe('isEmailAvailable', () => {
+    it('should return true when email is available', async () => {
+      // Arrange
+      prismaService.user.findUnique.mockResolvedValue(null);
+
+      // Act
+      const result = await service.isEmailAvailable('new@example.com');
+
+      // Assert
+      expect(result).toBe(true);
+      expect(prismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { emailLower: 'new@example.com' },
+      });
+    });
+
+    it('should return false when email is taken', async () => {
+      // Arrange
+      prismaService.user.findUnique.mockResolvedValue(mockUser);
+
+      // Act
+      const result = await service.isEmailAvailable('test@example.com');
+
+      // Assert
+      expect(result).toBe(false);
+      expect(prismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { emailLower: 'test@example.com' },
+      });
+    });
+
+    it('should handle case-insensitive checking', async () => {
+      // Arrange
+      prismaService.user.findUnique.mockResolvedValue(null);
+
+      // Act
+      const result = await service.isEmailAvailable('TEST@EXAMPLE.COM');
+
+      // Assert
+      expect(result).toBe(true);
+      expect(prismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { emailLower: 'test@example.com' },
+      });
+    });
+  });
+});

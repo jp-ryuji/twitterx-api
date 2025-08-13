@@ -28,7 +28,7 @@
   - Write unit tests for password operations and token generation
   - _Requirements: 7.2, 3.3, 7.1_
 
-- [ ] 5. Build user registration functionality
+- [x] 5. Build user registration functionality
   - Implement user registration logic with case-insensitive username/email checking
   - Auto-generate usernameLower and emailLower fields during registration
   - Implement email verification token generation and storage

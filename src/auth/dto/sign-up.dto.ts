@@ -12,7 +12,10 @@ import {
   IsDateString,
 } from 'class-validator';
 
-import { trimString, trimAndLowercase } from '../../common/transformers';
+import {
+  trimString,
+  trimAndLowercase,
+} from '../../common/transformers/string.transformers';
 
 export class SignUpDto {
   @ApiProperty({

@@ -37,7 +37,7 @@ describe('HealthController', () => {
       const result = await controller.checkHealth();
       expect(result).toEqual({
         status: 'ok',
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
         timestamp: expect.any(String),
         checks: {
           database: 'ok',
@@ -53,7 +53,7 @@ describe('HealthController', () => {
       const result = await controller.checkHealth();
       expect(result).toEqual({
         status: 'error',
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
         timestamp: expect.any(String),
         checks: {
           database: 'error',
@@ -69,7 +69,7 @@ describe('HealthController', () => {
       const result = await controller.checkHealth();
       expect(result).toEqual({
         status: 'error',
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
         timestamp: expect.any(String),
         checks: {
           database: 'ok',
@@ -85,7 +85,7 @@ describe('HealthController', () => {
       const result = await controller.checkHealth();
       expect(result).toEqual({
         status: 'error',
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
         timestamp: expect.any(String),
         checks: {
           database: 'error',

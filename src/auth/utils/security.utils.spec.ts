@@ -25,9 +25,8 @@ describe('SecurityUtils', () => {
     });
 
     it('should handle null/undefined input', () => {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       expect(SecurityUtils.sanitizeString(null as any)).toBe('');
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
       expect(SecurityUtils.sanitizeString(undefined as any)).toBe('');
     });
   });

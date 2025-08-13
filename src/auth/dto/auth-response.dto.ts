@@ -17,43 +17,43 @@ export class UserResponseDto {
     description: 'Email address with original casing',
     example: 'john.doe@example.com',
   })
-  email?: string;
+  email?: string | null;
 
   @ApiPropertyOptional({
     description: 'Display name',
     example: 'John Doe',
   })
-  displayName?: string;
+  displayName?: string | null;
 
   @ApiPropertyOptional({
     description: 'User bio',
     example: 'Software developer passionate about technology.',
   })
-  bio?: string;
+  bio?: string | null;
 
   @ApiPropertyOptional({
     description: 'User location',
     example: 'San Francisco, CA',
   })
-  location?: string;
+  location?: string | null;
 
   @ApiPropertyOptional({
     description: 'Personal website URL',
     example: 'https://johndoe.dev',
   })
-  websiteUrl?: string;
+  websiteUrl?: string | null;
 
   @ApiPropertyOptional({
     description: 'Profile picture path',
     example: '/uploads/profiles/user123.jpg',
   })
-  profilePicturePath?: string;
+  profilePicturePath?: string | null;
 
   @ApiPropertyOptional({
     description: 'Header image path',
     example: '/uploads/headers/user123.jpg',
   })
-  headerImagePath?: string;
+  headerImagePath?: string | null;
 
   @ApiProperty({
     description: 'Email verification status',
@@ -106,28 +106,47 @@ export class UserResponseDto {
 
 export class AuthResponseDto {
   @ApiProperty({
-    description: 'JWT access token',
-    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+    description: 'Operation success status',
+    example: true,
   })
-  accessToken: string;
+  success: boolean;
 
   @ApiProperty({
-    description: 'Token type',
-    example: 'Bearer',
+    description: 'Response message',
+    example:
+      'Registration successful. Please check your email to verify your account.',
   })
-  tokenType: string = 'Bearer';
-
-  @ApiProperty({
-    description: 'Token expiration time in seconds',
-    example: 3600,
-  })
-  expiresIn: number;
+  message: string;
 
   @ApiProperty({
     description: 'User information',
     type: UserResponseDto,
   })
   user: UserResponseDto;
+
+  @ApiPropertyOptional({
+    description: 'Whether email verification is required',
+    example: true,
+  })
+  requiresEmailVerification?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'JWT access token (for login responses)',
+    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+  })
+  accessToken?: string;
+
+  @ApiPropertyOptional({
+    description: 'Token type (for login responses)',
+    example: 'Bearer',
+  })
+  tokenType?: string;
+
+  @ApiPropertyOptional({
+    description: 'Token expiration time in seconds (for login responses)',
+    example: 3600,
+  })
+  expiresIn?: number;
 }
 
 export class SignUpResponseDto {
