@@ -7,7 +7,7 @@
   - Set up authentication module structure with proper imports
   - _Requirements: 1.1, 1.2, 4.1, 5.1_
 
-- [ ] 2. Implement core authentication DTOs and validation
+- [x] 2. Implement core authentication DTOs and validation
   - Create SignUpDto with birthDate (registration only), SignInDto, and UpdateProfileDto (no birthDate)
   - Implement validation for case-insensitive username and email handling
   - Create response DTOs for consistent API responses
