@@ -15,6 +15,7 @@ describe('HealthController', () => {
           provide: HealthService,
           useValue: {
             checkDatabaseHealth: jest.fn(),
+            checkRedisHealth: jest.fn(),
           },
         },
       ],
@@ -29,25 +30,67 @@ describe('HealthController', () => {
   });
 
   describe('checkHealth', () => {
-    it('should return status ok when database is healthy', async () => {
+    it('should return status ok when both database and Redis are healthy', async () => {
       (healthService.checkDatabaseHealth as jest.Mock).mockResolvedValue(true);
+      (healthService.checkRedisHealth as jest.Mock).mockResolvedValue(true);
 
       const result = await controller.checkHealth();
       expect(result).toEqual({
         status: 'ok',
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         timestamp: expect.any(String),
+        checks: {
+          database: 'ok',
+          redis: 'ok',
+        },
       });
     });
 
     it('should return status error when database is unhealthy', async () => {
       (healthService.checkDatabaseHealth as jest.Mock).mockResolvedValue(false);
+      (healthService.checkRedisHealth as jest.Mock).mockResolvedValue(true);
 
       const result = await controller.checkHealth();
       expect(result).toEqual({
         status: 'error',
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         timestamp: expect.any(String),
+        checks: {
+          database: 'error',
+          redis: 'ok',
+        },
+      });
+    });
+
+    it('should return status error when Redis is unhealthy', async () => {
+      (healthService.checkDatabaseHealth as jest.Mock).mockResolvedValue(true);
+      (healthService.checkRedisHealth as jest.Mock).mockResolvedValue(false);
+
+      const result = await controller.checkHealth();
+      expect(result).toEqual({
+        status: 'error',
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        timestamp: expect.any(String),
+        checks: {
+          database: 'ok',
+          redis: 'error',
+        },
+      });
+    });
+
+    it('should return status error when both database and Redis are unhealthy', async () => {
+      (healthService.checkDatabaseHealth as jest.Mock).mockResolvedValue(false);
+      (healthService.checkRedisHealth as jest.Mock).mockResolvedValue(false);
+
+      const result = await controller.checkHealth();
+      expect(result).toEqual({
+        status: 'error',
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        timestamp: expect.any(String),
+        checks: {
+          database: 'error',
+          redis: 'error',
+        },
       });
     });
   });

@@ -13,13 +13,32 @@ export class HealthController {
   @ApiResponse({ status: 200, description: 'Service is healthy' })
   @ApiResponse({ status: 503, description: 'Service is unhealthy' })
   async checkHealth() {
-    const isHealthy = await this.healthService.checkDatabaseHealth();
+    const [isDatabaseHealthy, isRedisHealthy] = await Promise.all([
+      this.healthService.checkDatabaseHealth(),
+      this.healthService.checkRedisHealth(),
+    ]);
+
     const timestamp = new Date().toISOString();
+    const isHealthy = isDatabaseHealthy && isRedisHealthy;
 
     if (isHealthy) {
-      return { status: 'ok', timestamp };
+      return {
+        status: 'ok',
+        timestamp,
+        checks: {
+          database: isDatabaseHealthy ? 'ok' : 'error',
+          redis: isRedisHealthy ? 'ok' : 'error',
+        },
+      };
     } else {
-      return { status: 'error', timestamp };
+      return {
+        status: 'error',
+        timestamp,
+        checks: {
+          database: isDatabaseHealthy ? 'ok' : 'error',
+          redis: isRedisHealthy ? 'ok' : 'error',
+        },
+      };
     }
   }
 }
