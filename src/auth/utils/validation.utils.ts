@@ -1,3 +1,5 @@
+import { normalizeString } from '../../common/transformers/string.transformers';
+
 /**
  * Utility functions for authentication validation
  */
@@ -8,7 +10,7 @@
  * @returns Normalized username (lowercase, trimmed)
  */
 export function normalizeUsername(username: string): string {
-  return username.trim().toLowerCase();
+  return normalizeString(username, true);
 }
 
 /**
@@ -17,7 +19,7 @@ export function normalizeUsername(username: string): string {
  * @returns Normalized email (lowercase, trimmed)
  */
 export function normalizeEmail(email: string): string {
-  return email.trim().toLowerCase();
+  return normalizeString(email, true);
 }
 
 /**

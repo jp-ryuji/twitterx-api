@@ -1,6 +1,37 @@
-import { trimString, trimAndLowercase } from './string.transformers';
+import {
+  normalizeString,
+  trimString,
+  trimAndLowercase,
+} from './string.transformers';
 
 describe('String Transformers', () => {
+  describe('normalizeString', () => {
+    it('should trim whitespace by default', () => {
+      expect(normalizeString('  hello world  ')).toBe('hello world');
+    });
+
+    it('should trim and convert to lowercase when requested', () => {
+      expect(normalizeString('  HELLO World  ', true)).toBe('hello world');
+    });
+
+    it('should only trim when toLowerCase is false', () => {
+      expect(normalizeString('  HELLO World  ', false)).toBe('HELLO World');
+    });
+
+    it('should handle empty strings', () => {
+      expect(normalizeString('')).toBe('');
+      expect(normalizeString('   ')).toBe('');
+    });
+
+    it('should handle strings with mixed case', () => {
+      expect(normalizeString('John.DOE@EXAMPLE.COM', true)).toBe(
+        'john.doe@example.com',
+      );
+      expect(normalizeString('John.DOE@EXAMPLE.COM', false)).toBe(
+        'John.DOE@EXAMPLE.COM',
+      );
+    });
+  });
   describe('trimString', () => {
     it('should trim whitespace from string values', () => {
       const result = trimString({ value: '  hello world  ' });
