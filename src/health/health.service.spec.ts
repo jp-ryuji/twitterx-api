@@ -41,7 +41,7 @@ describe('HealthService', () => {
 
     // Replace the service's logger with our mock
     const mockLogger = new MockLogger();
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
     (service as any).logger = mockLogger;
   });
 
@@ -51,19 +51,17 @@ describe('HealthService', () => {
 
   describe('checkDatabaseHealth', () => {
     it('should return true when database query succeeds', async () => {
-      // eslint-disable-next-line @typescript-eslint/unbound-method
       const mockFn = prismaService.$queryRaw as jest.Mock;
       // Use void to avoid the unused expression error
       void mockFn.mockResolvedValueOnce([{ '1': 1 }]);
 
       const result = await service.checkDatabaseHealth();
       expect(result).toBe(true);
-      // eslint-disable-next-line @typescript-eslint/unbound-method, @typescript-eslint/no-unused-expressions
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       expect(prismaService.$queryRaw).toHaveBeenCalledWith`SELECT 1`;
     });
 
     it('should return false when database query fails', async () => {
-      // eslint-disable-next-line @typescript-eslint/unbound-method
       const mockFn = prismaService.$queryRaw as jest.Mock;
       // Use void to avoid the unused expression error
       void mockFn.mockRejectedValueOnce(
@@ -77,7 +75,6 @@ describe('HealthService', () => {
 
   describe('checkRedisHealth', () => {
     it('should return true when Redis ping succeeds', async () => {
-      // eslint-disable-next-line @typescript-eslint/unbound-method
       const mockFn = redisService.ping as jest.Mock;
       void mockFn.mockResolvedValueOnce('PONG');
 
@@ -87,7 +84,6 @@ describe('HealthService', () => {
     });
 
     it('should return false when Redis ping fails', async () => {
-      // eslint-disable-next-line @typescript-eslint/unbound-method
       const mockFn = redisService.ping as jest.Mock;
       void mockFn.mockRejectedValueOnce(new Error('Redis connection failed'));
 
@@ -96,7 +92,6 @@ describe('HealthService', () => {
     });
 
     it('should return false when Redis ping returns unexpected response', async () => {
-      // eslint-disable-next-line @typescript-eslint/unbound-method
       const mockFn = redisService.ping as jest.Mock;
       void mockFn.mockResolvedValueOnce('UNEXPECTED');
 
