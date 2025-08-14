@@ -14,13 +14,14 @@ import {
   AccountLockedException,
   AccountSuspendedException,
 } from './exceptions';
-import { PasswordService } from './services';
+import { PasswordService, SessionService } from './services';
 
 describe('AuthService', () => {
   let service: AuthService;
   let prismaService: jest.Mocked<PrismaService>;
   let passwordService: jest.Mocked<PasswordService>;
   let redisService: jest.Mocked<RedisService>;
+  let mockSessionService: jest.Mocked<SessionService>;
 
   const mockUser = {
     id: 'test-user-id',
@@ -79,6 +80,13 @@ describe('AuthService', () => {
       incrementRateLimit: jest.fn(),
     };
 
+    const mockSessionService = {
+      createSession: jest.fn(),
+      invalidateSession: jest.fn(),
+      invalidateAllUserSessions: jest.fn(),
+      refreshSession: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
@@ -94,6 +102,10 @@ describe('AuthService', () => {
           provide: RedisService,
           useValue: mockRedisService,
         },
+        {
+          provide: SessionService,
+          useValue: mockSessionService,
+        },
       ],
     }).compile();
 
@@ -101,6 +113,7 @@ describe('AuthService', () => {
     prismaService = module.get(PrismaService);
     passwordService = module.get(PasswordService);
     redisService = module.get(RedisService);
+    mockSessionService = module.get(SessionService);
 
     // Mock logger to avoid console output during tests
     jest.spyOn(Logger.prototype, 'log').mockImplementation();
@@ -538,11 +551,7 @@ describe('AuthService', () => {
 
     it('should successfully sign in with username', async () => {
       // Arrange
-      prismaService.user.findUnique.mockResolvedValue(mockUserForLogin);
-      passwordService.validatePassword.mockResolvedValue(true);
-      passwordService.generateSecureToken.mockReturnValue('session-token-123');
-      prismaService.user.update.mockResolvedValue(mockUserForLogin);
-      prismaService.session.create.mockResolvedValue({
+      const mockSession = {
         id: 'session-id',
         userId: mockUserForLogin.id,
         sessionToken: 'session-token-123',
@@ -552,8 +561,22 @@ describe('AuthService', () => {
         expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         createdAt: new Date(),
         lastUsedAt: new Date(),
+      };
+
+      const mockTokens = {
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+        expiresIn: 900,
+        refreshExpiresIn: 604800,
+      };
+
+      prismaService.user.findUnique.mockResolvedValue(mockUserForLogin);
+      passwordService.validatePassword.mockResolvedValue(true);
+      prismaService.user.update.mockResolvedValue(mockUserForLogin);
+      mockSessionService.createSession.mockResolvedValue({
+        session: mockSession,
+        tokens: mockTokens,
       });
-      redisService.setSession.mockResolvedValue();
 
       // Act
       const result = await service.signIn(validSignInDto, deviceInfo);
@@ -567,6 +590,7 @@ describe('AuthService', () => {
         }),
         sessionToken: 'session-token-123',
         expiresAt: expect.any(Date),
+        tokens: mockTokens,
       });
 
       expect(prismaService.user.findUnique).toHaveBeenCalledWith({
@@ -583,8 +607,18 @@ describe('AuthService', () => {
           lockedUntil: null,
         },
       });
-      expect(prismaService.session.create).toHaveBeenCalled();
-      expect(redisService.setSession).toHaveBeenCalled();
+      expect(mockSessionService.createSession).toHaveBeenCalledWith(
+        mockUserForLogin.id,
+        mockUserForLogin.username,
+        mockUserForLogin.email,
+        {
+          deviceInfo: deviceInfo.deviceInfo,
+          ipAddress: deviceInfo.ipAddress,
+          userAgent: deviceInfo.userAgent,
+          rememberMe: false,
+          isMobile: false,
+        },
+      );
     });
 
     it('should successfully sign in with email', async () => {
