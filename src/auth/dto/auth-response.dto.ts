@@ -159,6 +159,12 @@ export class AuthResponseDto {
     example: '2024-09-13T14:22:00Z',
   })
   expiresAt?: Date;
+
+  @ApiPropertyOptional({
+    description: 'Authentication provider (for OAuth responses)',
+    example: 'google',
+  })
+  provider?: string;
 }
 
 export class SignUpResponseDto {

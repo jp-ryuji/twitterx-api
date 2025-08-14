@@ -492,4 +492,66 @@ export class AuthService {
       expiresAt: session?.expiresAt || new Date(),
     };
   }
+
+  /**
+   * Create session for OAuth authenticated user
+   */
+  async createSession(
+    user: User,
+    deviceInfo: {
+      ipAddress?: string;
+      userAgent?: string;
+      deviceInfo?: string;
+    },
+  ): Promise<{
+    user: Omit<User, 'password' | 'emailVerificationToken'>;
+    sessionToken: string;
+    expiresAt: Date;
+    tokens: TokenPair;
+  }> {
+    // Update last login
+    await this.updateLastLogin(user.id, deviceInfo?.ipAddress);
+
+    // Send login alert if from new device
+    if (deviceInfo && this.isNewDevice(user, deviceInfo)) {
+      this.sendLoginAlert(user, deviceInfo);
+    }
+
+    // Determine if mobile device
+    const isMobile = deviceInfo
+      ? this.isMobileDevice(deviceInfo.userAgent, deviceInfo.deviceInfo)
+      : false;
+
+    // Create session with JWT tokens
+    const { session, tokens } = await this.sessionService.createSession(
+      user.id,
+      user.username,
+      user.email || undefined,
+      {
+        deviceInfo: deviceInfo?.deviceInfo,
+        ipAddress: deviceInfo?.ipAddress,
+        userAgent: deviceInfo?.userAgent,
+        rememberMe: false, // OAuth sessions don't use remember me
+        isMobile,
+      },
+    );
+
+    // Return user without sensitive fields
+    const {
+      password: _password,
+      emailVerificationToken: _token,
+      ...userWithoutSensitiveData
+    } = user;
+
+    this.logger.log(
+      `OAuth session created for user: ${user.username} (${user.id})`,
+    );
+
+    return {
+      user: userWithoutSensitiveData,
+      sessionToken: session.sessionToken,
+      expiresAt: session.expiresAt,
+      tokens,
+    };
+  }
 }
