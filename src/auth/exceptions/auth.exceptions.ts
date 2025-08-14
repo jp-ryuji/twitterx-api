@@ -103,3 +103,66 @@ export class RateLimitExceededException extends HttpException {
     );
   }
 }
+
+export class OAuthConfigurationException extends HttpException {
+  constructor(provider: string) {
+    super(
+      {
+        message: `OAuth configuration for ${provider} is missing or invalid`,
+        code: 'OAUTH_CONFIGURATION_ERROR',
+      },
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
+  }
+}
+
+export class OAuthTokenExchangeException extends HttpException {
+  constructor(provider: string, error?: string) {
+    super(
+      {
+        message: `Failed to exchange authorization code with ${provider}`,
+        error,
+        code: 'OAUTH_TOKEN_EXCHANGE_ERROR',
+      },
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+}
+
+export class OAuthProfileFetchException extends HttpException {
+  constructor(provider: string, error?: string) {
+    super(
+      {
+        message: `Failed to fetch user profile from ${provider}`,
+        error,
+        code: 'OAUTH_PROFILE_FETCH_ERROR',
+      },
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+}
+
+export class OAuthInvalidStateException extends HttpException {
+  constructor() {
+    super(
+      {
+        message: 'Invalid OAuth state parameter',
+        code: 'OAUTH_INVALID_STATE',
+      },
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+}
+
+export class OAuthProviderLinkException extends HttpException {
+  constructor(provider: string, email: string) {
+    super(
+      {
+        message: `Cannot link ${provider} account. An account with email ${email} already exists with different authentication method`,
+        code: 'OAUTH_PROVIDER_LINK_ERROR',
+        suggestion: 'Try signing in with your existing credentials first',
+      },
+      HttpStatus.CONFLICT,
+    );
+  }
+}
