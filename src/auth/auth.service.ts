@@ -14,7 +14,7 @@ import {
   AccountLockedException,
   AccountSuspendedException,
 } from './exceptions';
-import { PasswordService } from './services';
+import { PasswordService, SessionService, TokenPair } from './services';
 import { SecurityUtils } from './utils';
 
 @Injectable()
@@ -25,6 +25,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly passwordService: PasswordService,
     private readonly redisService: RedisService,
+    private readonly sessionService: SessionService,
   ) {}
 
   /**
@@ -207,6 +208,7 @@ export class AuthService {
     user: Omit<User, 'password' | 'emailVerificationToken'>;
     sessionToken: string;
     expiresAt: Date;
+    tokens: TokenPair;
   }> {
     const { emailOrUsername, password, rememberMe = false } = signInDto;
 
@@ -252,11 +254,23 @@ export class AuthService {
       this.sendLoginAlert(user, deviceInfo);
     }
 
-    // Create session
-    const sessionData = await this.createSession(
+    // Determine if mobile device
+    const isMobile = deviceInfo
+      ? this.isMobileDevice(deviceInfo.userAgent, deviceInfo.deviceInfo)
+      : false;
+
+    // Create session with JWT tokens
+    const { session, tokens } = await this.sessionService.createSession(
       user.id,
-      rememberMe,
-      deviceInfo,
+      user.username,
+      user.email || undefined,
+      {
+        deviceInfo: deviceInfo?.deviceInfo,
+        ipAddress: deviceInfo?.ipAddress,
+        userAgent: deviceInfo?.userAgent,
+        rememberMe,
+        isMobile,
+      },
     );
 
     // Return user without sensitive fields
@@ -272,8 +286,9 @@ export class AuthService {
 
     return {
       user: userWithoutSensitiveData,
-      sessionToken: sessionData.sessionToken,
-      expiresAt: sessionData.expiresAt,
+      sessionToken: session.sessionToken,
+      expiresAt: session.expiresAt,
+      tokens,
     };
   }
 
@@ -414,57 +429,67 @@ export class AuthService {
   }
 
   /**
-   * Create a new session
+   * Determine if device is mobile based on user agent or device info
    */
-  private async createSession(
-    userId: string,
-    rememberMe: boolean,
-    deviceInfo?: {
-      ipAddress?: string;
-      userAgent?: string;
-      deviceInfo?: string;
-    },
-  ): Promise<{ sessionToken: string; expiresAt: Date }> {
-    // Generate secure session token
-    const sessionToken = this.passwordService.generateSecureToken();
+  private isMobileDevice(userAgent?: string, deviceInfo?: string): boolean {
+    if (!userAgent && !deviceInfo) {
+      return false;
+    }
 
-    // Calculate expiration based on rememberMe and device type
-    const webSessionDays = parseInt(
-      process.env.WEB_SESSION_TIMEOUT_DAYS || '30',
-      10,
+    const mobileKeywords = [
+      'Mobile',
+      'Android',
+      'iPhone',
+      'iPad',
+      'iPod',
+      'BlackBerry',
+      'Windows Phone',
+      'Opera Mini',
+    ];
+
+    const checkString = `${userAgent || ''} ${deviceInfo || ''}`.toLowerCase();
+    return mobileKeywords.some((keyword) =>
+      checkString.includes(keyword.toLowerCase()),
     );
-    const mobileSessionDays = parseInt(
-      process.env.MOBILE_SESSION_TIMEOUT_DAYS || '90',
-      10,
-    );
+  }
 
-    // Use mobile session timeout if rememberMe is true, otherwise web timeout
-    const sessionDays = rememberMe ? mobileSessionDays : webSessionDays;
-    const expiresAt = new Date(Date.now() + sessionDays * 24 * 60 * 60 * 1000);
+  /**
+   * Sign out user by invalidating session
+   */
+  async signOut(sessionToken: string): Promise<void> {
+    await this.sessionService.invalidateSession(sessionToken);
+    this.logger.log(`User signed out, session invalidated: ${sessionToken}`);
+  }
 
-    // Store session in database
-    await this.prisma.session.create({
-      data: {
-        userId,
-        sessionToken,
-        deviceInfo: deviceInfo?.deviceInfo,
-        ipAddress: deviceInfo?.ipAddress,
-        userAgent: deviceInfo?.userAgent,
-        expiresAt,
-      },
+  /**
+   * Sign out user from all devices
+   */
+  async signOutAll(userId: string): Promise<void> {
+    await this.sessionService.invalidateAllUserSessions(userId);
+    this.logger.log(`User signed out from all devices: ${userId}`);
+  }
+
+  /**
+   * Refresh session and get new tokens
+   */
+  async refreshSession(sessionToken: string): Promise<{
+    tokens: TokenPair;
+    expiresAt: Date;
+  } | null> {
+    const result = await this.sessionService.refreshSession(sessionToken, true);
+
+    if (!result || !result.tokens) {
+      return null;
+    }
+
+    // Get updated session info
+    const session = await this.prisma.session.findUnique({
+      where: { sessionToken },
     });
 
-    // Store session in Redis for fast access
-    const sessionData = {
-      userId,
-      createdAt: new Date().toISOString(),
-      deviceInfo: deviceInfo?.deviceInfo,
-      ipAddress: deviceInfo?.ipAddress,
+    return {
+      tokens: result.tokens,
+      expiresAt: session?.expiresAt || new Date(),
     };
-
-    const ttlSeconds = Math.floor((expiresAt.getTime() - Date.now()) / 1000);
-    await this.redisService.setSession(sessionToken, sessionData, ttlSeconds);
-
-    return { sessionToken, expiresAt };
   }
 }
