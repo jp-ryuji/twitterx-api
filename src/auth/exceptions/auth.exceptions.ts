@@ -47,3 +47,46 @@ export class InvalidPasswordException extends HttpException {
     );
   }
 }
+
+export class InvalidCredentialsException extends HttpException {
+  constructor() {
+    super(
+      {
+        message: 'Invalid credentials',
+        code: 'INVALID_CREDENTIALS',
+      },
+      HttpStatus.UNAUTHORIZED,
+    );
+  }
+}
+
+export class AccountLockedException extends HttpException {
+  constructor(lockedUntil: Date) {
+    const lockoutDuration = Math.ceil(
+      (lockedUntil.getTime() - Date.now()) / (1000 * 60),
+    );
+    super(
+      {
+        message:
+          'Account is temporarily locked due to too many failed login attempts',
+        lockedUntil: lockedUntil.toISOString(),
+        lockoutDurationMinutes: lockoutDuration,
+        code: 'ACCOUNT_LOCKED',
+      },
+      HttpStatus.FORBIDDEN,
+    );
+  }
+}
+
+export class AccountSuspendedException extends HttpException {
+  constructor(reason?: string) {
+    super(
+      {
+        message: 'Account has been suspended',
+        reason,
+        code: 'ACCOUNT_SUSPENDED',
+      },
+      HttpStatus.FORBIDDEN,
+    );
+  }
+}
