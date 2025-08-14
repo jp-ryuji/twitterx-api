@@ -6,11 +6,13 @@ import {
   HttpStatus,
   Req,
   Ip,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 import { AuthService } from './auth.service';
 import { SignUpDto, SignInDto, AuthResponseDto } from './dto';
+import { RateLimit, RateLimitGuard } from './guards';
 
 import type { Request } from 'express';
 
@@ -20,6 +22,12 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('signup')
+  @UseGuards(RateLimitGuard)
+  @RateLimit({
+    maxAttempts: 10,
+    windowSeconds: 3600,
+    keyPrefix: 'signup',
+  })
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Register a new user account' })
   @ApiResponse({
@@ -35,6 +43,10 @@ export class AuthController {
     status: 409,
     description: 'Username or email already exists',
   })
+  @ApiResponse({
+    status: 429,
+    description: 'Rate limit exceeded',
+  })
   async signUp(@Body() signUpDto: SignUpDto): Promise<AuthResponseDto> {
     const result = await this.authService.registerUser(signUpDto);
 
@@ -49,6 +61,12 @@ export class AuthController {
   }
 
   @Post('signin')
+  @UseGuards(RateLimitGuard)
+  @RateLimit({
+    maxAttempts: 20,
+    windowSeconds: 3600,
+    keyPrefix: 'login',
+  })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Sign in to user account' })
   @ApiResponse({
@@ -66,7 +84,7 @@ export class AuthController {
   })
   @ApiResponse({
     status: 429,
-    description: 'Too many login attempts',
+    description: 'Rate limit exceeded',
   })
   async signIn(
     @Body() signInDto: SignInDto,

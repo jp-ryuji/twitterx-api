@@ -7,6 +7,7 @@ import { RedisModule } from '../redis/redis.module';
 
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { JwtAuthGuard, RateLimitGuard, SessionGuard } from './guards';
 import {
   PasswordService,
   JwtService as CustomJwtService,
@@ -33,7 +34,17 @@ import { JwtStrategy } from './strategies';
     CustomJwtService,
     SessionService,
     JwtStrategy,
+    JwtAuthGuard,
+    RateLimitGuard,
+    SessionGuard,
   ],
-  exports: [AuthService, CustomJwtService, SessionService],
+  exports: [
+    AuthService,
+    CustomJwtService,
+    SessionService,
+    JwtAuthGuard,
+    RateLimitGuard,
+    SessionGuard,
+  ],
 })
 export class AuthModule {}
