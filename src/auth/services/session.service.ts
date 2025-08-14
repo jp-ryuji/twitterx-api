@@ -191,8 +191,8 @@ export class SessionService {
 
       // Determine if it's a mobile session based on user agent or device info
       const isMobile = this.isMobileDevice(
-        session.userAgent,
-        session.deviceInfo,
+        session.userAgent || undefined,
+        session.deviceInfo || undefined,
       );
       const rememberMe = this.isLongSession(
         session.expiresAt,
