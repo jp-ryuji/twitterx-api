@@ -2,13 +2,17 @@ import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { RedisService } from '../redis/redis.service';
 
 import { AuthService } from './auth.service';
-import { SignUpDto } from './dto';
+import { SignUpDto, SignInDto } from './dto';
 import {
   UsernameUnavailableException,
   EmailAlreadyExistsException,
   InvalidPasswordException,
+  InvalidCredentialsException,
+  AccountLockedException,
+  AccountSuspendedException,
 } from './exceptions';
 import { PasswordService } from './services';
 
@@ -16,6 +20,7 @@ describe('AuthService', () => {
   let service: AuthService;
   let prismaService: jest.Mocked<PrismaService>;
   let passwordService: jest.Mocked<PasswordService>;
+  let redisService: jest.Mocked<RedisService>;
 
   const mockUser = {
     id: 'test-user-id',
@@ -55,6 +60,10 @@ describe('AuthService', () => {
       user: {
         findUnique: jest.fn(),
         create: jest.fn(),
+        update: jest.fn(),
+      },
+      session: {
+        create: jest.fn(),
       },
     };
 
@@ -62,6 +71,12 @@ describe('AuthService', () => {
       validatePasswordStrength: jest.fn(),
       hashPassword: jest.fn(),
       generateSecureToken: jest.fn(),
+      validatePassword: jest.fn(),
+    };
+
+    const mockRedisService = {
+      setSession: jest.fn(),
+      incrementRateLimit: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -75,12 +90,17 @@ describe('AuthService', () => {
           provide: PasswordService,
           useValue: mockPasswordService,
         },
+        {
+          provide: RedisService,
+          useValue: mockRedisService,
+        },
       ],
     }).compile();
 
     service = module.get<AuthService>(AuthService);
     prismaService = module.get(PrismaService);
     passwordService = module.get(PasswordService);
+    redisService = module.get(RedisService);
 
     // Mock logger to avoid console output during tests
     jest.spyOn(Logger.prototype, 'log').mockImplementation();
@@ -491,6 +511,405 @@ describe('AuthService', () => {
       expect(prismaService.user.findUnique).toHaveBeenCalledWith({
         where: { emailLower: 'test@example.com' },
       });
+    });
+  });
+
+  describe('signIn', () => {
+    const validSignInDto: SignInDto = {
+      emailOrUsername: 'testuser',
+      password: 'ValidPassword123!',
+      rememberMe: false,
+    };
+
+    const deviceInfo = {
+      ipAddress: '192.168.1.1',
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      deviceInfo: 'Desktop',
+    };
+
+    const mockUserForLogin = {
+      ...mockUser,
+      password: 'hashed-password',
+      isSuspended: false,
+      lockedUntil: null,
+      failedLoginAttempts: 0,
+      lastLoginIp: '192.168.1.2',
+    };
+
+    it('should successfully sign in with username', async () => {
+      // Arrange
+      prismaService.user.findUnique.mockResolvedValue(mockUserForLogin);
+      passwordService.validatePassword.mockResolvedValue(true);
+      passwordService.generateSecureToken.mockReturnValue('session-token-123');
+      prismaService.user.update.mockResolvedValue(mockUserForLogin);
+      prismaService.session.create.mockResolvedValue({
+        id: 'session-id',
+        userId: mockUserForLogin.id,
+        sessionToken: 'session-token-123',
+        deviceInfo: 'Desktop',
+        ipAddress: '192.168.1.1',
+        userAgent: deviceInfo.userAgent,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        createdAt: new Date(),
+        lastUsedAt: new Date(),
+      });
+      redisService.setSession.mockResolvedValue();
+
+      // Act
+      const result = await service.signIn(validSignInDto, deviceInfo);
+
+      // Assert
+      expect(result).toEqual({
+        user: expect.objectContaining({
+          id: mockUserForLogin.id,
+          username: mockUserForLogin.username,
+          email: mockUserForLogin.email,
+        }),
+        sessionToken: 'session-token-123',
+        expiresAt: expect.any(Date),
+      });
+
+      expect(prismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { usernameLower: 'testuser' },
+      });
+      expect(passwordService.validatePassword).toHaveBeenCalledWith(
+        'ValidPassword123!',
+        'hashed-password',
+      );
+      expect(prismaService.user.update).toHaveBeenCalledWith({
+        where: { id: mockUserForLogin.id },
+        data: {
+          failedLoginAttempts: 0,
+          lockedUntil: null,
+        },
+      });
+      expect(prismaService.session.create).toHaveBeenCalled();
+      expect(redisService.setSession).toHaveBeenCalled();
+    });
+
+    it('should successfully sign in with email', async () => {
+      // Arrange
+      const signInWithEmail = {
+        ...validSignInDto,
+        emailOrUsername: 'test@example.com',
+      };
+      prismaService.user.findUnique
+        .mockResolvedValueOnce(null) // Username not found
+        .mockResolvedValueOnce(mockUserForLogin); // Email found
+      passwordService.validatePassword.mockResolvedValue(true);
+      passwordService.generateSecureToken.mockReturnValue('session-token-123');
+      prismaService.user.update.mockResolvedValue(mockUserForLogin);
+      prismaService.session.create.mockResolvedValue({
+        id: 'session-id',
+        userId: mockUserForLogin.id,
+        sessionToken: 'session-token-123',
+        deviceInfo: 'Desktop',
+        ipAddress: '192.168.1.1',
+        userAgent: deviceInfo.userAgent,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        createdAt: new Date(),
+        lastUsedAt: new Date(),
+      });
+      redisService.setSession.mockResolvedValue();
+
+      // Act
+      const result = await service.signIn(signInWithEmail, deviceInfo);
+
+      // Assert
+      expect(result).toBeDefined();
+      expect(prismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { usernameLower: 'test@example.com' },
+      });
+      expect(prismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { emailLower: 'test@example.com' },
+      });
+    });
+
+    it('should handle case-insensitive credential validation', async () => {
+      // Arrange
+      const signInWithMixedCase = {
+        ...validSignInDto,
+        emailOrUsername: 'TestUser',
+      };
+      prismaService.user.findUnique.mockResolvedValue(mockUserForLogin);
+      passwordService.validatePassword.mockResolvedValue(true);
+      passwordService.generateSecureToken.mockReturnValue('session-token-123');
+      prismaService.user.update.mockResolvedValue(mockUserForLogin);
+      prismaService.session.create.mockResolvedValue({
+        id: 'session-id',
+        userId: mockUserForLogin.id,
+        sessionToken: 'session-token-123',
+        deviceInfo: 'Desktop',
+        ipAddress: '192.168.1.1',
+        userAgent: deviceInfo.userAgent,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        createdAt: new Date(),
+        lastUsedAt: new Date(),
+      });
+      redisService.setSession.mockResolvedValue();
+
+      // Act
+      await service.signIn(signInWithMixedCase, deviceInfo);
+
+      // Assert
+      expect(prismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { usernameLower: 'testuser' },
+      });
+    });
+
+    it('should throw InvalidCredentialsException for non-existent user', async () => {
+      // Arrange
+      prismaService.user.findUnique.mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(service.signIn(validSignInDto, deviceInfo)).rejects.toThrow(
+        InvalidCredentialsException,
+      );
+
+      expect(passwordService.validatePassword).not.toHaveBeenCalled();
+    });
+
+    it('should throw AccountSuspendedException for suspended account', async () => {
+      // Arrange
+      const suspendedUser = {
+        ...mockUserForLogin,
+        isSuspended: true,
+        suspensionReason: 'Violation of terms',
+      };
+      prismaService.user.findUnique.mockResolvedValue(suspendedUser);
+
+      // Act & Assert
+      await expect(service.signIn(validSignInDto, deviceInfo)).rejects.toThrow(
+        AccountSuspendedException,
+      );
+
+      expect(passwordService.validatePassword).not.toHaveBeenCalled();
+    });
+
+    it('should throw AccountLockedException for locked account', async () => {
+      // Arrange
+      const lockedUser = {
+        ...mockUserForLogin,
+        lockedUntil: new Date(Date.now() + 30 * 60 * 1000), // Locked for 30 minutes
+      };
+      prismaService.user.findUnique.mockResolvedValue(lockedUser);
+
+      // Act & Assert
+      await expect(service.signIn(validSignInDto, deviceInfo)).rejects.toThrow(
+        AccountLockedException,
+      );
+
+      expect(passwordService.validatePassword).not.toHaveBeenCalled();
+    });
+
+    it('should throw InvalidCredentialsException for wrong password', async () => {
+      // Arrange
+      prismaService.user.findUnique.mockResolvedValue(mockUserForLogin);
+      passwordService.validatePassword.mockResolvedValue(false);
+      prismaService.user.update.mockResolvedValue({
+        ...mockUserForLogin,
+        failedLoginAttempts: 1,
+      });
+      redisService.incrementRateLimit.mockResolvedValue({
+        count: 1,
+        isLimitExceeded: false,
+        resetTime: Date.now() + 3600000,
+      });
+
+      // Act & Assert
+      await expect(service.signIn(validSignInDto, deviceInfo)).rejects.toThrow(
+        InvalidCredentialsException,
+      );
+
+      expect(prismaService.user.update).toHaveBeenCalledWith({
+        where: { id: mockUserForLogin.id },
+        data: {
+          failedLoginAttempts: { increment: 1 },
+        },
+      });
+      expect(redisService.incrementRateLimit).toHaveBeenCalledWith(
+        'failed_login:192.168.1.1',
+        3600,
+        20,
+      );
+    });
+
+    it('should lock account after max failed attempts', async () => {
+      // Arrange
+      const userWithFailedAttempts = {
+        ...mockUserForLogin,
+        failedLoginAttempts: 4, // One less than max (5)
+      };
+      prismaService.user.findUnique.mockResolvedValue(userWithFailedAttempts);
+      passwordService.validatePassword.mockResolvedValue(false);
+      prismaService.user.update
+        .mockResolvedValueOnce({
+          ...userWithFailedAttempts,
+          failedLoginAttempts: 5,
+        })
+        .mockResolvedValueOnce({
+          ...userWithFailedAttempts,
+          failedLoginAttempts: 5,
+          lockedUntil: new Date(Date.now() + 30 * 60 * 1000),
+        });
+      redisService.incrementRateLimit.mockResolvedValue({
+        count: 1,
+        isLimitExceeded: false,
+        resetTime: Date.now() + 3600000,
+      });
+
+      // Act & Assert
+      await expect(service.signIn(validSignInDto, deviceInfo)).rejects.toThrow(
+        InvalidCredentialsException,
+      );
+
+      expect(prismaService.user.update).toHaveBeenCalledTimes(2);
+      expect(prismaService.user.update).toHaveBeenLastCalledWith({
+        where: { id: userWithFailedAttempts.id },
+        data: {
+          lockedUntil: expect.any(Date),
+        },
+      });
+    });
+
+    it('should use mobile session timeout when rememberMe is true', async () => {
+      // Arrange
+      const signInWithRememberMe = { ...validSignInDto, rememberMe: true };
+      prismaService.user.findUnique.mockResolvedValue(mockUserForLogin);
+      passwordService.validatePassword.mockResolvedValue(true);
+      passwordService.generateSecureToken.mockReturnValue('session-token-123');
+      prismaService.user.update.mockResolvedValue(mockUserForLogin);
+      prismaService.session.create.mockResolvedValue({
+        id: 'session-id',
+        userId: mockUserForLogin.id,
+        sessionToken: 'session-token-123',
+        deviceInfo: 'Desktop',
+        ipAddress: '192.168.1.1',
+        userAgent: deviceInfo.userAgent,
+        expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days
+        createdAt: new Date(),
+        lastUsedAt: new Date(),
+      });
+      redisService.setSession.mockResolvedValue();
+
+      // Act
+      const result = await service.signIn(signInWithRememberMe, deviceInfo);
+
+      // Assert
+      expect(result.expiresAt.getTime()).toBeGreaterThan(
+        Date.now() + 60 * 24 * 60 * 60 * 1000, // More than 60 days
+      );
+    });
+
+    it('should send login alert for new device', async () => {
+      // Arrange
+      const userWithDifferentLastIP = {
+        ...mockUserForLogin,
+        lastLoginIp: '192.168.1.100', // Different IP
+      };
+      prismaService.user.findUnique.mockResolvedValue(userWithDifferentLastIP);
+      passwordService.validatePassword.mockResolvedValue(true);
+      passwordService.generateSecureToken.mockReturnValue('session-token-123');
+      prismaService.user.update.mockResolvedValue(userWithDifferentLastIP);
+      prismaService.session.create.mockResolvedValue({
+        id: 'session-id',
+        userId: userWithDifferentLastIP.id,
+        sessionToken: 'session-token-123',
+        deviceInfo: 'Desktop',
+        ipAddress: '192.168.1.1',
+        userAgent: deviceInfo.userAgent,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        createdAt: new Date(),
+        lastUsedAt: new Date(),
+      });
+      redisService.setSession.mockResolvedValue();
+
+      const loggerSpy = jest.spyOn(Logger.prototype, 'log');
+
+      // Act
+      await service.signIn(validSignInDto, deviceInfo);
+
+      // Assert
+      expect(loggerSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Login alert'),
+      );
+    });
+
+    it('should update last login information', async () => {
+      // Arrange
+      prismaService.user.findUnique.mockResolvedValue(mockUserForLogin);
+      passwordService.validatePassword.mockResolvedValue(true);
+      passwordService.generateSecureToken.mockReturnValue('session-token-123');
+      prismaService.user.update.mockResolvedValue(mockUserForLogin);
+      prismaService.session.create.mockResolvedValue({
+        id: 'session-id',
+        userId: mockUserForLogin.id,
+        sessionToken: 'session-token-123',
+        deviceInfo: 'Desktop',
+        ipAddress: '192.168.1.1',
+        userAgent: deviceInfo.userAgent,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        createdAt: new Date(),
+        lastUsedAt: new Date(),
+      });
+      redisService.setSession.mockResolvedValue();
+
+      // Act
+      await service.signIn(validSignInDto, deviceInfo);
+
+      // Assert
+      expect(prismaService.user.update).toHaveBeenCalledWith({
+        where: { id: mockUserForLogin.id },
+        data: {
+          lastLoginAt: expect.any(Date),
+          lastLoginIp: '192.168.1.1',
+        },
+      });
+    });
+
+    it('should create session in both database and Redis', async () => {
+      // Arrange
+      prismaService.user.findUnique.mockResolvedValue(mockUserForLogin);
+      passwordService.validatePassword.mockResolvedValue(true);
+      passwordService.generateSecureToken.mockReturnValue('session-token-123');
+      prismaService.user.update.mockResolvedValue(mockUserForLogin);
+      prismaService.session.create.mockResolvedValue({
+        id: 'session-id',
+        userId: mockUserForLogin.id,
+        sessionToken: 'session-token-123',
+        deviceInfo: 'Desktop',
+        ipAddress: '192.168.1.1',
+        userAgent: deviceInfo.userAgent,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        createdAt: new Date(),
+        lastUsedAt: new Date(),
+      });
+      redisService.setSession.mockResolvedValue();
+
+      // Act
+      await service.signIn(validSignInDto, deviceInfo);
+
+      // Assert
+      expect(prismaService.session.create).toHaveBeenCalledWith({
+        data: {
+          userId: mockUserForLogin.id,
+          sessionToken: 'session-token-123',
+          deviceInfo: 'Desktop',
+          ipAddress: '192.168.1.1',
+          userAgent: deviceInfo.userAgent,
+          expiresAt: expect.any(Date),
+        },
+      });
+
+      expect(redisService.setSession).toHaveBeenCalledWith(
+        'session-token-123',
+        expect.objectContaining({
+          userId: mockUserForLogin.id,
+          deviceInfo: 'Desktop',
+          ipAddress: '192.168.1.1',
+        }),
+        expect.any(Number),
+      );
     });
   });
 });
