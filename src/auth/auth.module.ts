@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 
@@ -12,11 +13,13 @@ import {
   PasswordService,
   JwtService as CustomJwtService,
   SessionService,
+  GoogleOAuthService,
 } from './services';
-import { JwtStrategy } from './strategies';
+import { JwtStrategy, GoogleOAuthStrategy } from './strategies';
 
 @Module({
   imports: [
+    ConfigModule,
     PrismaModule,
     RedisModule,
     PassportModule,
@@ -33,7 +36,9 @@ import { JwtStrategy } from './strategies';
     PasswordService,
     CustomJwtService,
     SessionService,
+    GoogleOAuthService,
     JwtStrategy,
+    GoogleOAuthStrategy,
     JwtAuthGuard,
     RateLimitGuard,
     SessionGuard,
@@ -42,6 +47,7 @@ import { JwtStrategy } from './strategies';
     AuthService,
     CustomJwtService,
     SessionService,
+    GoogleOAuthService,
     JwtAuthGuard,
     RateLimitGuard,
     SessionGuard,
