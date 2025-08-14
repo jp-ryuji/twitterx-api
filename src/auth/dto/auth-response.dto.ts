@@ -147,6 +147,18 @@ export class AuthResponseDto {
     example: 3600,
   })
   expiresIn?: number;
+
+  @ApiPropertyOptional({
+    description: 'Session token (for login responses)',
+    example: 'sess_clx1234567890abcdef',
+  })
+  sessionToken?: string;
+
+  @ApiPropertyOptional({
+    description: 'Session expiration date (for login responses)',
+    example: '2024-09-13T14:22:00Z',
+  })
+  expiresAt?: Date;
 }
 
 export class SignUpResponseDto {
