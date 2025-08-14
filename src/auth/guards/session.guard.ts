@@ -31,8 +31,8 @@ export class SessionGuard implements CanActivate {
     }
 
     // Attach session data to request
-    (request as Request & { session: any; user: any }).session = sessionData;
-    (request as Request & { session: any; user: any }).user = {
+    (request as Request & { session?: any; user?: any }).session = sessionData;
+    (request as Request & { session?: any; user?: any }).user = {
       userId: sessionData.userId,
       username: sessionData.username,
       email: sessionData.email,
