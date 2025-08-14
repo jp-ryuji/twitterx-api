@@ -90,3 +90,16 @@ export class AccountSuspendedException extends HttpException {
     );
   }
 }
+
+export class RateLimitExceededException extends HttpException {
+  constructor(retryAfter: number) {
+    super(
+      {
+        message: 'Rate limit exceeded',
+        retryAfter,
+        code: 'RATE_LIMIT_EXCEEDED',
+      },
+      HttpStatus.TOO_MANY_REQUESTS,
+    );
+  }
+}
