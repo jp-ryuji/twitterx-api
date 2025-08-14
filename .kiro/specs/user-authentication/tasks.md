@@ -62,7 +62,7 @@
   - Write unit tests for OAuth flow with mocked Google API responses
   - _Requirements: 1.2, 2.2, 8.4_
 
-- [ ] 10. Create email service for notifications
+- [x] 10. Create email service for notifications
   - Implement EmailService with SMTP configuration
   - Create email templates for verification, password reset, and login alerts
   - Add email sending functionality with error handling and retries
