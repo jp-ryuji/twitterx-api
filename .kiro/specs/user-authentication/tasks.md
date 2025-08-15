@@ -89,7 +89,7 @@
   - Write unit tests for user controller endpoints
   - _Requirements: 3.1, 3.5, 4.6, 4.7_
 
-- [ ] 14. Add security and moderation features
+- [x] 14. Add security and moderation features
   - Implement account suspension and verification status management
   - Create admin endpoints for user moderation (suspend, verify, etc.)
   - Add shadow ban functionality and suspicious activity detection
