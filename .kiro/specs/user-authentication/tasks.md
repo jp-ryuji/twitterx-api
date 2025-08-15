@@ -82,7 +82,7 @@
   - Write unit tests for user service operations
   - _Requirements: 3.1, 3.2, 5.5, 5.6_
 
-- [ ] 13. Create user management controller
+- [x] 13. Create user management controller
   - Implement UserController with profile and session management endpoints
   - Add session listing and revocation functionality
   - Implement account deactivation with soft delete
