@@ -65,14 +65,70 @@ export class AuthController {
   @ApiResponse({
     status: 400,
     description: 'Invalid input data or password requirements not met',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number', example: 400 },
+        message: {
+          oneOf: [
+            {
+              type: 'string',
+              example: 'Password must be at least 8 characters long',
+            },
+            {
+              type: 'array',
+              items: { type: 'string' },
+              example: [
+                'Username must be between 3 and 15 characters',
+                'Please provide a valid email address',
+              ],
+            },
+          ],
+        },
+        error: { type: 'string', example: 'Bad Request' },
+        timestamp: { type: 'string', example: '2024-08-13T14:22:00Z' },
+        path: { type: 'string', example: '/v1/auth/signup' },
+      },
+    },
   })
   @ApiResponse({
     status: 409,
     description: 'Username or email already exists',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number', example: 409 },
+        message: {
+          type: 'string',
+          example: "Username 'john_doe123' is not available",
+        },
+        error: { type: 'string', example: 'Conflict' },
+        timestamp: { type: 'string', example: '2024-08-13T14:22:00Z' },
+        path: { type: 'string', example: '/v1/auth/signup' },
+        code: { type: 'string', example: 'USERNAME_UNAVAILABLE' },
+        suggestions: {
+          type: 'array',
+          items: { type: 'string' },
+          example: ['john_doe124', 'john_doe_2024', 'johndoe123'],
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 429,
     description: 'Rate limit exceeded',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number', example: 429 },
+        message: { type: 'string', example: 'Rate limit exceeded' },
+        error: { type: 'string', example: 'Too Many Requests' },
+        timestamp: { type: 'string', example: '2024-08-13T14:22:00Z' },
+        path: { type: 'string', example: '/v1/auth/signup' },
+        code: { type: 'string', example: 'RATE_LIMIT_EXCEEDED' },
+        retryAfter: { type: 'number', example: 3600 },
+      },
+    },
   })
   async signUp(@Body() signUpDto: SignUpDto): Promise<AuthResponseDto> {
     const result = await this.authService.registerUser(signUpDto);
@@ -104,14 +160,71 @@ export class AuthController {
   @ApiResponse({
     status: 401,
     description: 'Invalid credentials',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number', example: 401 },
+        message: { type: 'string', example: 'Invalid credentials' },
+        error: { type: 'string', example: 'Unauthorized' },
+        timestamp: { type: 'string', example: '2024-08-13T14:22:00Z' },
+        path: { type: 'string', example: '/v1/auth/signin' },
+        code: { type: 'string', example: 'INVALID_CREDENTIALS' },
+      },
+    },
   })
   @ApiResponse({
     status: 403,
     description: 'Account locked or suspended',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number', example: 403 },
+        message: {
+          oneOf: [
+            {
+              type: 'string',
+              example:
+                'Account is temporarily locked due to too many failed login attempts',
+            },
+            { type: 'string', example: 'Account has been suspended' },
+          ],
+        },
+        error: { type: 'string', example: 'Forbidden' },
+        timestamp: { type: 'string', example: '2024-08-13T14:22:00Z' },
+        path: { type: 'string', example: '/v1/auth/signin' },
+        code: {
+          oneOf: [
+            { type: 'string', example: 'ACCOUNT_LOCKED' },
+            { type: 'string', example: 'ACCOUNT_SUSPENDED' },
+          ],
+        },
+        lockedUntil: {
+          type: 'string',
+          format: 'date-time',
+          example: '2024-08-13T15:22:00Z',
+        },
+        reason: {
+          type: 'string',
+          example: 'Violation of community guidelines',
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 429,
     description: 'Rate limit exceeded',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number', example: 429 },
+        message: { type: 'string', example: 'Rate limit exceeded' },
+        error: { type: 'string', example: 'Too Many Requests' },
+        timestamp: { type: 'string', example: '2024-08-13T14:22:00Z' },
+        path: { type: 'string', example: '/v1/auth/signin' },
+        code: { type: 'string', example: 'RATE_LIMIT_EXCEEDED' },
+        retryAfter: { type: 'number', example: 3600 },
+      },
+    },
   })
   async signIn(
     @Body() signInDto: SignInDto,
