@@ -46,6 +46,10 @@ model User {
   lockedUntil           DateTime?
   lastLoginAt           DateTime?
   lastLoginIp           String?
+  isShadowBanned        Boolean   @default(false)
+  shadowBanReason       String?
+  suspiciousActivityCount Int     @default(0)
+  lastSuspiciousActivity DateTime?
 
   // Timestamps
   createdAt             DateTime  @default(now())
