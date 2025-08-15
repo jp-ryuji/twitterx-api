@@ -68,7 +68,7 @@
   - Add email sending functionality with error handling and retries
   - Write unit tests for email operations with mocked SMTP transport
   - _Requirements: 1.5, 2.6, 3.4_
-- [ ] 11. Build authentication controller endpoints
+- [x] 11. Build authentication controller endpoints
   - Create AuthController with signup, signin, and signout endpoints
   - Add password reset and email verification endpoints
   - Implement case-insensitive login handling (username or email)

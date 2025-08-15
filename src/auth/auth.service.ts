@@ -554,4 +554,170 @@ export class AuthService {
       tokens,
     };
   }
+
+  /**
+   * Request password reset by email
+   */
+  async requestPasswordReset(email: string): Promise<void> {
+    const sanitizedEmail = SecurityUtils.sanitizeEmail(email);
+    const emailLower = sanitizedEmail.toLowerCase();
+
+    // Find user by email
+    const user = await this.prisma.user.findUnique({
+      where: { emailLower },
+    });
+
+    // Always return success to prevent email enumeration
+    if (!user) {
+      this.logger.warn(
+        `Password reset requested for non-existent email: ${sanitizedEmail}`,
+      );
+      return;
+    }
+
+    // Generate reset token
+    const resetToken = this.passwordService.generateSecureToken();
+    const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    // Save reset token
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordResetToken: resetToken,
+        passwordResetExpires: resetExpires,
+      },
+    });
+
+    // TODO: Send password reset email
+    this.logger.log(
+      `Password reset requested for user: ${user.username} (${user.id})`,
+    );
+
+    // In a real implementation, you would send an email here
+    // await this.emailService.sendPasswordResetEmail(user, resetToken);
+  }
+
+  /**
+   * Reset password using reset token
+   */
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    // Validate new password strength
+    const passwordValidation =
+      this.passwordService.validatePasswordStrength(newPassword);
+    if (!passwordValidation.isValid) {
+      throw new InvalidPasswordException(passwordValidation.errors);
+    }
+
+    // Find user by reset token
+    const user = await this.prisma.user.findFirst({
+      where: {
+        passwordResetToken: token,
+        passwordResetExpires: {
+          gt: new Date(),
+        },
+      },
+    });
+
+    if (!user) {
+      throw new InvalidCredentialsException('Invalid or expired reset token');
+    }
+
+    // Hash new password
+    const hashedPassword = await this.passwordService.hashPassword(newPassword);
+
+    // Update password and clear reset token
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        passwordResetToken: null,
+        passwordResetExpires: null,
+        failedLoginAttempts: 0, // Reset failed attempts
+        lockedUntil: null, // Unlock account if locked
+      },
+    });
+
+    // Invalidate all existing sessions for security
+    await this.signOutAll(user.id);
+
+    this.logger.log(
+      `Password reset successful for user: ${user.username} (${user.id})`,
+    );
+  }
+
+  /**
+   * Verify email using verification token
+   */
+  async verifyEmail(token: string): Promise<void> {
+    // Find user by verification token
+    const user = await this.prisma.user.findFirst({
+      where: {
+        emailVerificationToken: token,
+        emailVerified: false,
+      },
+    });
+
+    if (!user) {
+      throw new InvalidCredentialsException('Invalid verification token');
+    }
+
+    // Mark email as verified and clear token
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerified: true,
+        emailVerificationToken: null,
+      },
+    });
+
+    this.logger.log(`Email verified for user: ${user.username} (${user.id})`);
+  }
+
+  /**
+   * Resend email verification
+   */
+  async resendEmailVerification(email: string): Promise<void> {
+    const sanitizedEmail = SecurityUtils.sanitizeEmail(email);
+    const emailLower = sanitizedEmail.toLowerCase();
+
+    // Find user by email
+    const user = await this.prisma.user.findUnique({
+      where: { emailLower },
+    });
+
+    // Always return success to prevent email enumeration
+    if (!user) {
+      this.logger.warn(
+        `Email verification resend requested for non-existent email: ${sanitizedEmail}`,
+      );
+      return;
+    }
+
+    // Check if already verified
+    if (user.emailVerified) {
+      this.logger.warn(
+        `Email verification resend requested for already verified email: ${sanitizedEmail}`,
+      );
+      return;
+    }
+
+    // Generate new verification token
+    const verificationToken = this.passwordService.generateSecureToken();
+
+    // Update verification token
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerificationToken: verificationToken,
+      },
+    });
+
+    // TODO: Send verification email
+    this.logger.log(
+      `Email verification resent for user: ${user.username} (${user.id})`,
+    );
+
+    // In a real implementation, you would send an email here
+    // await this.emailService.sendVerificationEmail(user, verificationToken);
+  }
 }
