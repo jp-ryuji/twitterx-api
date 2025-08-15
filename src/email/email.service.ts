@@ -55,7 +55,7 @@ export class EmailService {
       text: template.text,
     };
 
-    let lastError: Error;
+    let lastError: Error = new Error('Unknown error');
 
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
