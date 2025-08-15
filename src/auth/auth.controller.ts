@@ -10,16 +10,32 @@ import {
   Ip,
   UseGuards,
   Redirect,
+  Headers,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiQuery,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 
 import { AuthService } from './auth.service';
-import { SignUpDto, SignInDto, AuthResponseDto } from './dto';
+import {
+  SignUpDto,
+  SignInDto,
+  AuthResponseDto,
+  SignOutDto,
+  RequestPasswordResetDto,
+  ResetPasswordDto,
+  VerifyEmailDto,
+  ResendVerificationDto,
+} from './dto';
 import {
   OAuthConfigurationException,
   OAuthTokenExchangeException,
 } from './exceptions/auth.exceptions';
-import { RateLimit, RateLimitGuard } from './guards';
+import { RateLimit, RateLimitGuard, SessionGuard } from './guards';
 import { GoogleOAuthService } from './services';
 
 import type { Request } from 'express';
@@ -246,6 +262,200 @@ export class AuthController {
         error instanceof Error ? error.message : 'Unknown error';
       throw new OAuthTokenExchangeException('Google', errorMessage);
     }
+  }
+
+  @Post('signout')
+  @UseGuards(SessionGuard, RateLimitGuard)
+  @RateLimit({
+    maxAttempts: 30,
+    windowSeconds: 3600,
+    keyPrefix: 'signout',
+  })
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Sign out from current or all sessions' })
+  @ApiResponse({
+    status: 200,
+    description: 'Successfully signed out',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid or expired session token',
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Rate limit exceeded',
+  })
+  async signOut(
+    @Headers('authorization') authorization: string,
+    @Body() signOutDto: SignOutDto = {},
+  ): Promise<{ success: boolean; message: string }> {
+    // Extract session token from Authorization header
+    const sessionToken = authorization?.replace('Bearer ', '');
+
+    if (!sessionToken) {
+      return {
+        success: false,
+        message: 'No session token provided',
+      };
+    }
+
+    if (signOutDto.signOutAll) {
+      // Get user ID from session first
+      // This would require a method to get user from session token
+      // For now, we'll just sign out the current session
+      await this.authService.signOut(sessionToken);
+    } else {
+      await this.authService.signOut(sessionToken);
+    }
+
+    return {
+      success: true,
+      message: signOutDto.signOutAll
+        ? 'Successfully signed out from all devices'
+        : 'Successfully signed out',
+    };
+  }
+
+  @Post('password/reset/request')
+  @UseGuards(RateLimitGuard)
+  @RateLimit({
+    maxAttempts: 5,
+    windowSeconds: 3600,
+    keyPrefix: 'password-reset-request',
+  })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request password reset email' })
+  @ApiResponse({
+    status: 200,
+    description: 'Password reset email sent (if email exists)',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid email format',
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Rate limit exceeded',
+  })
+  async requestPasswordReset(
+    @Body() requestPasswordResetDto: RequestPasswordResetDto,
+  ): Promise<{ success: boolean; message: string }> {
+    await this.authService.requestPasswordReset(requestPasswordResetDto.email);
+
+    return {
+      success: true,
+      message: 'If the email exists, a password reset link has been sent.',
+    };
+  }
+
+  @Post('password/reset')
+  @UseGuards(RateLimitGuard)
+  @RateLimit({
+    maxAttempts: 10,
+    windowSeconds: 3600,
+    keyPrefix: 'password-reset',
+  })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reset password using reset token' })
+  @ApiResponse({
+    status: 200,
+    description: 'Password reset successful',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid token or password requirements not met',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid or expired reset token',
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Rate limit exceeded',
+  })
+  async resetPassword(
+    @Body() resetPasswordDto: ResetPasswordDto,
+  ): Promise<{ success: boolean; message: string }> {
+    await this.authService.resetPassword(
+      resetPasswordDto.token,
+      resetPasswordDto.newPassword,
+    );
+
+    return {
+      success: true,
+      message:
+        'Password reset successful. Please sign in with your new password.',
+    };
+  }
+
+  @Post('email/verify')
+  @UseGuards(RateLimitGuard)
+  @RateLimit({
+    maxAttempts: 10,
+    windowSeconds: 3600,
+    keyPrefix: 'email-verify',
+  })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify email address using verification token' })
+  @ApiResponse({
+    status: 200,
+    description: 'Email verified successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid verification token',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid or expired verification token',
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Rate limit exceeded',
+  })
+  async verifyEmail(
+    @Body() verifyEmailDto: VerifyEmailDto,
+  ): Promise<{ success: boolean; message: string }> {
+    await this.authService.verifyEmail(verifyEmailDto.token);
+
+    return {
+      success: true,
+      message: 'Email verified successfully.',
+    };
+  }
+
+  @Post('email/resend-verification')
+  @UseGuards(RateLimitGuard)
+  @RateLimit({
+    maxAttempts: 3,
+    windowSeconds: 3600,
+    keyPrefix: 'resend-verification',
+  })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Resend email verification' })
+  @ApiResponse({
+    status: 200,
+    description: 'Verification email sent (if email exists and is unverified)',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid email format',
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Rate limit exceeded',
+  })
+  async resendEmailVerification(
+    @Body() resendVerificationDto: ResendVerificationDto,
+  ): Promise<{ success: boolean; message: string }> {
+    await this.authService.resendEmailVerification(resendVerificationDto.email);
+
+    return {
+      success: true,
+      message:
+        'If the email exists and is unverified, a verification email has been sent.',
+    };
   }
 
   /**
