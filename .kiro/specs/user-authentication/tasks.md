@@ -75,7 +75,7 @@
   - Write unit tests for controller methods with proper mocking
   - _Requirements: 8.1, 1.1, 2.1, 5.1, 3.3, 3.4_
 
-- [ ] 12. Implement user profile management
+- [x] 12. Implement user profile management
   - Create UserService for profile operations and account management
   - Implement profile update functionality (excluding birthDate which is immutable)
   - Add username change logic with case-insensitive validation
