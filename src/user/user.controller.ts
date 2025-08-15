@@ -63,38 +63,99 @@ export class UserController {
     schema: {
       type: 'object',
       properties: {
-        id: { type: 'string' },
-        username: { type: 'string' },
-        usernameLower: { type: 'string' },
-        email: { type: 'string', nullable: true },
-        emailLower: { type: 'string', nullable: true },
-        displayName: { type: 'string', nullable: true },
-        bio: { type: 'string', nullable: true },
-        location: { type: 'string', nullable: true },
-        websiteUrl: { type: 'string', nullable: true },
-        profilePicturePath: { type: 'string', nullable: true },
-        headerImagePath: { type: 'string', nullable: true },
-        birthDate: { type: 'string', format: 'date', nullable: true },
-        followerCount: { type: 'number' },
-        followingCount: { type: 'number' },
-        tweetCount: { type: 'number' },
-        isVerified: { type: 'boolean' },
-        isPrivate: { type: 'boolean' },
-        isSuspended: { type: 'boolean' },
-        suspensionReason: { type: 'string', nullable: true },
-        emailVerified: { type: 'boolean' },
-        createdAt: { type: 'string', format: 'date-time' },
-        updatedAt: { type: 'string', format: 'date-time' },
+        id: { type: 'string', example: 'clx1234567890abcdef' },
+        username: { type: 'string', example: 'john_doe123' },
+        usernameLower: { type: 'string', example: 'john_doe123' },
+        email: {
+          type: 'string',
+          nullable: true,
+          example: 'john.doe@example.com',
+        },
+        emailLower: {
+          type: 'string',
+          nullable: true,
+          example: 'john.doe@example.com',
+        },
+        displayName: { type: 'string', nullable: true, example: 'John Doe' },
+        bio: {
+          type: 'string',
+          nullable: true,
+          example: 'Software developer passionate about technology.',
+        },
+        location: {
+          type: 'string',
+          nullable: true,
+          example: 'San Francisco, CA',
+        },
+        websiteUrl: {
+          type: 'string',
+          nullable: true,
+          example: 'https://johndoe.dev',
+        },
+        profilePicturePath: {
+          type: 'string',
+          nullable: true,
+          example: '/uploads/profiles/user123.jpg',
+        },
+        headerImagePath: {
+          type: 'string',
+          nullable: true,
+          example: '/uploads/headers/user123.jpg',
+        },
+        birthDate: {
+          type: 'string',
+          format: 'date',
+          nullable: true,
+          example: '1990-01-15',
+        },
+        followerCount: { type: 'number', example: 150 },
+        followingCount: { type: 'number', example: 75 },
+        tweetCount: { type: 'number', example: 42 },
+        isVerified: { type: 'boolean', example: false },
+        isPrivate: { type: 'boolean', example: false },
+        isSuspended: { type: 'boolean', example: false },
+        suspensionReason: { type: 'string', nullable: true, example: null },
+        emailVerified: { type: 'boolean', example: true },
+        createdAt: {
+          type: 'string',
+          format: 'date-time',
+          example: '2024-01-15T10:30:00Z',
+        },
+        updatedAt: {
+          type: 'string',
+          format: 'date-time',
+          example: '2024-08-13T14:22:00Z',
+        },
       },
     },
   })
   @ApiResponse({
     status: 401,
     description: 'Unauthorized - Invalid or missing token',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number', example: 401 },
+        message: { type: 'string', example: 'Unauthorized' },
+        error: { type: 'string', example: 'Unauthorized' },
+        timestamp: { type: 'string', example: '2024-08-13T14:22:00Z' },
+        path: { type: 'string', example: '/v1/users/profile' },
+      },
+    },
   })
   @ApiResponse({
     status: 404,
     description: 'User not found',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number', example: 404 },
+        message: { type: 'string', example: 'User not found' },
+        error: { type: 'string', example: 'Not Found' },
+        timestamp: { type: 'string', example: '2024-08-13T14:22:00Z' },
+        path: { type: 'string', example: '/v1/users/profile' },
+      },
+    },
   })
   async getProfile(@Request() req: AuthenticatedRequest) {
     return this.userService.getProfile(req.user.userId);
