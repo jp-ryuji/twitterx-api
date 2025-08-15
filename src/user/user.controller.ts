@@ -3,6 +3,7 @@ import {
   Get,
   Put,
   Delete,
+  Post,
   Body,
   Param,
   UseGuards,
@@ -23,6 +24,10 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { SessionService, SessionInfo } from '../auth/services/session.service';
 import { PrismaService } from '../prisma/prisma.service';
 
+import {
+  AdminModerationDto,
+  SuspiciousActivityDto,
+} from './dto/admin-moderation.dto';
 import { ChangeUsernameDto } from './dto/change-username.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UserService } from './user.service';
@@ -372,5 +377,162 @@ export class UserController {
   })
   async deactivateAccount(@Request() req: AuthenticatedRequest): Promise<void> {
     await this.userService.deactivateAccount(req.user.userId);
+  }
+
+  // Admin endpoints for moderation
+  @Post('admin/moderate/:userId')
+  @ApiTags('Admin - User Moderation')
+  @ApiOperation({
+    summary: 'Perform moderation action on user',
+    description:
+      'Admin endpoint to suspend, verify, or apply other moderation actions to a user account',
+  })
+  @ApiParam({
+    name: 'userId',
+    description: 'The ID of the user to moderate',
+    type: 'string',
+    format: 'uuid',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Moderation action applied successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        username: { type: 'string' },
+        isSuspended: { type: 'boolean' },
+        suspensionReason: { type: 'string', nullable: true },
+        isVerified: { type: 'boolean' },
+        isShadowBanned: { type: 'boolean' },
+        shadowBanReason: { type: 'string', nullable: true },
+        updatedAt: { type: 'string', format: 'date-time' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Invalid or missing token',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Insufficient permissions',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'User not found',
+  })
+  async moderateUser(
+    @Request() req: AuthenticatedRequest,
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Body() moderationDto: AdminModerationDto,
+  ) {
+    const updatedUser = await this.userService.performModerationAction(
+      userId,
+      moderationDto,
+      req.user.userId,
+    );
+
+    return {
+      id: updatedUser.id,
+      username: updatedUser.username,
+      isSuspended: updatedUser.isSuspended,
+      suspensionReason: updatedUser.suspensionReason,
+      isVerified: updatedUser.isVerified,
+      isShadowBanned: updatedUser.isShadowBanned,
+      shadowBanReason: updatedUser.shadowBanReason,
+      updatedAt: updatedUser.updatedAt,
+    };
+  }
+
+  @Get('admin/moderation-status/:userId')
+  @ApiTags('Admin - User Moderation')
+  @ApiOperation({
+    summary: 'Get user moderation status',
+    description:
+      'Admin endpoint to view moderation status and history for a user',
+  })
+  @ApiParam({
+    name: 'userId',
+    description: 'The ID of the user to check',
+    type: 'string',
+    format: 'uuid',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'User moderation status retrieved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        isSuspended: { type: 'boolean' },
+        suspensionReason: { type: 'string', nullable: true },
+        isVerified: { type: 'boolean' },
+        isShadowBanned: { type: 'boolean' },
+        shadowBanReason: { type: 'string', nullable: true },
+        suspiciousActivityCount: { type: 'number' },
+        lastSuspiciousActivity: {
+          type: 'string',
+          format: 'date-time',
+          nullable: true,
+        },
+        failedLoginAttempts: { type: 'number' },
+        lockedUntil: { type: 'string', format: 'date-time', nullable: true },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Invalid or missing token',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Insufficient permissions',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'User not found',
+  })
+  async getModerationStatus(
+    @Request() req: AuthenticatedRequest,
+    @Param('userId', ParseUUIDPipe) userId: string,
+  ) {
+    return this.userService.getModerationStatus(userId);
+  }
+
+  @Post('admin/report-suspicious/:userId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiTags('Admin - Security')
+  @ApiOperation({
+    summary: 'Report suspicious activity',
+    description: 'Report suspicious activity for a user account',
+  })
+  @ApiParam({
+    name: 'userId',
+    description: 'The ID of the user with suspicious activity',
+    type: 'string',
+    format: 'uuid',
+  })
+  @ApiResponse({
+    status: 204,
+    description: 'Suspicious activity reported successfully',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Invalid or missing token',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Insufficient permissions',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'User not found',
+  })
+  async reportSuspiciousActivity(
+    @Request() req: AuthenticatedRequest,
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Body() activityDto: SuspiciousActivityDto,
+  ): Promise<void> {
+    await this.userService.reportSuspiciousActivity(userId, activityDto);
   }
 }
