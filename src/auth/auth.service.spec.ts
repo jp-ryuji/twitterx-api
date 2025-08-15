@@ -56,6 +56,25 @@ describe('AuthService', () => {
     updatedAt: new Date(),
   };
 
+  const mockSession = {
+    id: 'session-id',
+    userId: 'test-user-id',
+    sessionToken: 'session-token-123',
+    deviceInfo: 'Desktop',
+    ipAddress: '192.168.1.1',
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    createdAt: new Date(),
+    lastUsedAt: new Date(),
+  };
+
+  const mockTokens = {
+    accessToken: 'access-token',
+    refreshToken: 'refresh-token',
+    expiresIn: 900,
+    refreshExpiresIn: 604800,
+  };
+
   beforeEach(async () => {
     const mockPrismaService = {
       user: {
@@ -80,12 +99,15 @@ describe('AuthService', () => {
       incrementRateLimit: jest.fn(),
     };
 
-    const mockSessionService = {
+    mockSessionService = {
       createSession: jest.fn(),
       invalidateSession: jest.fn(),
       invalidateAllUserSessions: jest.fn(),
       refreshSession: jest.fn(),
-    };
+      validateSession: jest.fn(),
+      getUserSessions: jest.fn(),
+      cleanupExpiredSessions: jest.fn(),
+    } as jest.Mocked<SessionService>;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -631,20 +653,11 @@ describe('AuthService', () => {
         .mockResolvedValueOnce(null) // Username not found
         .mockResolvedValueOnce(mockUserForLogin); // Email found
       passwordService.validatePassword.mockResolvedValue(true);
-      passwordService.generateSecureToken.mockReturnValue('session-token-123');
       prismaService.user.update.mockResolvedValue(mockUserForLogin);
-      prismaService.session.create.mockResolvedValue({
-        id: 'session-id',
-        userId: mockUserForLogin.id,
-        sessionToken: 'session-token-123',
-        deviceInfo: 'Desktop',
-        ipAddress: '192.168.1.1',
-        userAgent: deviceInfo.userAgent,
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        createdAt: new Date(),
-        lastUsedAt: new Date(),
+      mockSessionService.createSession.mockResolvedValue({
+        session: mockSession,
+        tokens: mockTokens,
       });
-      redisService.setSession.mockResolvedValue();
 
       // Act
       const result = await service.signIn(signInWithEmail, deviceInfo);
@@ -681,6 +694,10 @@ describe('AuthService', () => {
         lastUsedAt: new Date(),
       });
       redisService.setSession.mockResolvedValue();
+      mockSessionService.createSession.mockResolvedValue({
+        session: mockSession,
+        tokens: mockTokens,
+      });
 
       // Act
       await service.signIn(signInWithMixedCase, deviceInfo);
@@ -825,13 +842,23 @@ describe('AuthService', () => {
         lastUsedAt: new Date(),
       });
       redisService.setSession.mockResolvedValue();
+      mockSessionService.createSession.mockResolvedValue({
+        session: mockSession,
+        tokens: mockTokens,
+      });
 
       // Act
       const result = await service.signIn(signInWithRememberMe, deviceInfo);
 
       // Assert
-      expect(result.expiresAt.getTime()).toBeGreaterThan(
-        Date.now() + 60 * 24 * 60 * 60 * 1000, // More than 60 days
+      expect(mockSessionService.createSession).toHaveBeenCalledWith(
+        mockUserForLogin.id,
+        mockUserForLogin.username,
+        mockUserForLogin.email,
+        expect.objectContaining({
+          rememberMe: true,
+          isMobile: false,
+        }),
       );
     });
 
@@ -857,6 +884,10 @@ describe('AuthService', () => {
         lastUsedAt: new Date(),
       });
       redisService.setSession.mockResolvedValue();
+      mockSessionService.createSession.mockResolvedValue({
+        session: mockSession,
+        tokens: mockTokens,
+      });
 
       const loggerSpy = jest.spyOn(Logger.prototype, 'log');
 
@@ -887,6 +918,10 @@ describe('AuthService', () => {
         lastUsedAt: new Date(),
       });
       redisService.setSession.mockResolvedValue();
+      mockSessionService.createSession.mockResolvedValue({
+        session: mockSession,
+        tokens: mockTokens,
+      });
 
       // Act
       await service.signIn(validSignInDto, deviceInfo);
@@ -919,30 +954,40 @@ describe('AuthService', () => {
         lastUsedAt: new Date(),
       });
       redisService.setSession.mockResolvedValue();
+      mockSessionService.createSession.mockResolvedValue({
+        session: mockSession,
+        tokens: mockTokens,
+      });
 
       // Act
       await service.signIn(validSignInDto, deviceInfo);
 
       // Assert
-      expect(prismaService.session.create).toHaveBeenCalledWith({
-        data: {
-          userId: mockUserForLogin.id,
-          sessionToken: 'session-token-123',
+      expect(mockSessionService.createSession).toHaveBeenCalledWith(
+        mockUserForLogin.id,
+        mockUserForLogin.username,
+        mockUserForLogin.email,
+        expect.objectContaining({
           deviceInfo: 'Desktop',
           ipAddress: '192.168.1.1',
           userAgent: deviceInfo.userAgent,
-          expiresAt: expect.any(Date),
-        },
-      });
+          rememberMe: false,
+          isMobile: false,
+        }),
+      );
 
-      expect(redisService.setSession).toHaveBeenCalledWith(
-        'session-token-123',
+      // Since we're using SessionService, we should verify it was called correctly
+      expect(mockSessionService.createSession).toHaveBeenCalledWith(
+        mockUserForLogin.id,
+        mockUserForLogin.username,
+        mockUserForLogin.email,
         expect.objectContaining({
-          userId: mockUserForLogin.id,
           deviceInfo: 'Desktop',
           ipAddress: '192.168.1.1',
+          userAgent: deviceInfo.userAgent,
+          rememberMe: false,
+          isMobile: false,
         }),
-        expect.any(Number),
       );
     });
   });
