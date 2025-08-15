@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 
@@ -15,16 +15,31 @@ import {
 
 @Injectable()
 export class GoogleOAuthStrategy extends PassportStrategy(Strategy, 'google') {
+  private readonly logger = new Logger(GoogleOAuthStrategy.name);
+
   constructor(
     private readonly configService: ConfigService,
     private readonly googleOAuthService: GoogleOAuthService,
   ) {
+    // Check if required environment variables are set
+    const clientId = configService.get<string>('GOOGLE_CLIENT_ID');
+    const clientSecret = configService.get<string>('GOOGLE_CLIENT_SECRET');
+    const callbackURL = configService.get<string>('GOOGLE_CALLBACK_URL');
+
+    // Initialize the strategy with provided values or fallbacks
     super({
-      clientID: configService.get<string>('GOOGLE_CLIENT_ID')!,
-      clientSecret: configService.get<string>('GOOGLE_CLIENT_SECRET')!,
-      callbackURL: configService.get<string>('GOOGLE_CALLBACK_URL')!,
+      clientID: clientId || 'mock-client-id',
+      clientSecret: clientSecret || 'mock-client-secret',
+      callbackURL: callbackURL || 'http://localhost:3000/mock-callback',
       scope: ['openid', 'email', 'profile'],
     } as StrategyOptions);
+
+    // Log a warning if environment variables are not set
+    if (!clientId || !clientSecret || !callbackURL) {
+      this.logger.warn(
+        'Google OAuth environment variables not set. Google OAuth will be disabled.',
+      );
+    }
   }
 
   async validate(
