@@ -1,8 +1,19 @@
+import { Reflector } from '@nestjs/core';
 import { Test, TestingModule } from '@nestjs/testing';
+
+import { RedisService } from '../redis/redis.service';
 
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { SignUpDto, SignInDto } from './dto';
+import {
+  SignUpDto,
+  SignInDto,
+  SignOutDto,
+  RequestPasswordResetDto,
+  ResetPasswordDto,
+  VerifyEmailDto,
+  ResendVerificationDto,
+} from './dto';
 import {
   UsernameUnavailableException,
   EmailAlreadyExistsException,
@@ -11,10 +22,12 @@ import {
   AccountLockedException,
   AccountSuspendedException,
 } from './exceptions';
+import { GoogleOAuthService, SessionService } from './services';
 
 describe('AuthController', () => {
   let controller: AuthController;
   let authService: jest.Mocked<AuthService>;
+  let googleOAuthService: jest.Mocked<GoogleOAuthService>;
 
   const mockUser = {
     id: 'test-user-id',
@@ -47,10 +60,36 @@ describe('AuthController', () => {
     updatedAt: new Date(),
   };
 
+  const mockTokens = {
+    accessToken: 'access-token-123',
+    refreshToken: 'refresh-token-123',
+  };
+
   beforeEach(async () => {
     const mockAuthService = {
       registerUser: jest.fn(),
       signIn: jest.fn(),
+      signOut: jest.fn(),
+      signOutAll: jest.fn(),
+      requestPasswordReset: jest.fn(),
+      resetPassword: jest.fn(),
+      verifyEmail: jest.fn(),
+      resendEmailVerification: jest.fn(),
+      createSession: jest.fn(),
+    };
+
+    const mockGoogleOAuthService = {
+      generateAuthUrl: jest.fn(),
+      exchangeCodeForTokens: jest.fn(),
+      getUserProfile: jest.fn(),
+      findOrCreateUser: jest.fn(),
+    };
+
+    const mockRedisService = {
+      get: jest.fn(),
+      set: jest.fn(),
+      del: jest.fn(),
+      incrementRateLimit: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -60,11 +99,33 @@ describe('AuthController', () => {
           provide: AuthService,
           useValue: mockAuthService,
         },
+        {
+          provide: GoogleOAuthService,
+          useValue: mockGoogleOAuthService,
+        },
+        {
+          provide: RedisService,
+          useValue: mockRedisService,
+        },
+        {
+          provide: SessionService,
+          useValue: {
+            createSession: jest.fn(),
+            invalidateSession: jest.fn(),
+            validateSession: jest.fn(),
+            refreshSession: jest.fn(),
+            invalidateAllUserSessions: jest.fn(),
+            getUserSessions: jest.fn(),
+            cleanupExpiredSessions: jest.fn(),
+          },
+        },
+        Reflector,
       ],
     }).compile();
 
     controller = module.get<AuthController>(AuthController);
     authService = module.get(AuthService);
+    googleOAuthService = module.get(GoogleOAuthService);
   });
 
   afterEach(() => {
@@ -267,6 +328,7 @@ describe('AuthController', () => {
       user: mockUser,
       sessionToken: 'session-token-123',
       expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      tokens: mockTokens,
     };
 
     it('should successfully sign in a user', async () => {
@@ -468,6 +530,246 @@ describe('AuthController', () => {
         userAgent: mockRequest.headers['user-agent'],
         deviceInfo: 'Desktop',
       });
+    });
+  });
+
+  describe('signOut', () => {
+    const validSignOutDto: SignOutDto = {
+      signOutAll: false,
+    };
+
+    it('should successfully sign out from current session', async () => {
+      // Arrange
+      const sessionToken = 'session-token-123';
+      const authorization = `Bearer ${sessionToken}`;
+      authService.signOut.mockResolvedValue(undefined);
+
+      // Act
+      const result = await controller.signOut(authorization, validSignOutDto);
+
+      // Assert
+      expect(result).toEqual({
+        success: true,
+        message: 'Successfully signed out',
+      });
+
+      expect(authService.signOut).toHaveBeenCalledWith(sessionToken);
+    });
+
+    it('should successfully sign out from all sessions', async () => {
+      // Arrange
+      const sessionToken = 'session-token-123';
+      const authorization = `Bearer ${sessionToken}`;
+      const signOutAllDto: SignOutDto = { signOutAll: true };
+      authService.signOut.mockResolvedValue(undefined);
+
+      // Act
+      const result = await controller.signOut(authorization, signOutAllDto);
+
+      // Assert
+      expect(result).toEqual({
+        success: true,
+        message: 'Successfully signed out from all devices',
+      });
+
+      expect(authService.signOut).toHaveBeenCalledWith(sessionToken);
+    });
+
+    it('should handle missing authorization header', async () => {
+      // Arrange
+      const authorization = '';
+
+      // Act
+      const result = await controller.signOut(authorization, validSignOutDto);
+
+      // Assert
+      expect(result).toEqual({
+        success: false,
+        message: 'No session token provided',
+      });
+
+      expect(authService.signOut).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('requestPasswordReset', () => {
+    const validRequestDto: RequestPasswordResetDto = {
+      email: 'test@example.com',
+    };
+
+    it('should successfully request password reset', async () => {
+      // Arrange
+      authService.requestPasswordReset.mockResolvedValue(undefined);
+
+      // Act
+      const result = await controller.requestPasswordReset(validRequestDto);
+
+      // Assert
+      expect(result).toEqual({
+        success: true,
+        message: 'If the email exists, a password reset link has been sent.',
+      });
+
+      expect(authService.requestPasswordReset).toHaveBeenCalledWith(
+        validRequestDto.email,
+      );
+    });
+
+    it('should handle service errors gracefully', async () => {
+      // Arrange
+      const error = new Error('Service error');
+      authService.requestPasswordReset.mockRejectedValue(error);
+
+      // Act & Assert
+      await expect(
+        controller.requestPasswordReset(validRequestDto),
+      ).rejects.toThrow('Service error');
+
+      expect(authService.requestPasswordReset).toHaveBeenCalledWith(
+        validRequestDto.email,
+      );
+    });
+  });
+
+  describe('resetPassword', () => {
+    const validResetDto: ResetPasswordDto = {
+      token: 'reset-token-123',
+      newPassword: 'NewSecurePassword123!',
+    };
+
+    it('should successfully reset password', async () => {
+      // Arrange
+      authService.resetPassword.mockResolvedValue(undefined);
+
+      // Act
+      const result = await controller.resetPassword(validResetDto);
+
+      // Assert
+      expect(result).toEqual({
+        success: true,
+        message:
+          'Password reset successful. Please sign in with your new password.',
+      });
+
+      expect(authService.resetPassword).toHaveBeenCalledWith(
+        validResetDto.token,
+        validResetDto.newPassword,
+      );
+    });
+
+    it('should handle InvalidCredentialsException', async () => {
+      // Arrange
+      const exception = new InvalidCredentialsException(
+        'Invalid or expired reset token',
+      );
+      authService.resetPassword.mockRejectedValue(exception);
+
+      // Act & Assert
+      await expect(controller.resetPassword(validResetDto)).rejects.toThrow(
+        InvalidCredentialsException,
+      );
+
+      expect(authService.resetPassword).toHaveBeenCalledWith(
+        validResetDto.token,
+        validResetDto.newPassword,
+      );
+    });
+
+    it('should handle InvalidPasswordException', async () => {
+      // Arrange
+      const exception = new InvalidPasswordException(['Password too weak']);
+      authService.resetPassword.mockRejectedValue(exception);
+
+      // Act & Assert
+      await expect(controller.resetPassword(validResetDto)).rejects.toThrow(
+        InvalidPasswordException,
+      );
+
+      expect(authService.resetPassword).toHaveBeenCalledWith(
+        validResetDto.token,
+        validResetDto.newPassword,
+      );
+    });
+  });
+
+  describe('verifyEmail', () => {
+    const validVerifyDto: VerifyEmailDto = {
+      token: 'verification-token-123',
+    };
+
+    it('should successfully verify email', async () => {
+      // Arrange
+      authService.verifyEmail.mockResolvedValue(undefined);
+
+      // Act
+      const result = await controller.verifyEmail(validVerifyDto);
+
+      // Assert
+      expect(result).toEqual({
+        success: true,
+        message: 'Email verified successfully.',
+      });
+
+      expect(authService.verifyEmail).toHaveBeenCalledWith(
+        validVerifyDto.token,
+      );
+    });
+
+    it('should handle InvalidCredentialsException', async () => {
+      // Arrange
+      const exception = new InvalidCredentialsException(
+        'Invalid verification token',
+      );
+      authService.verifyEmail.mockRejectedValue(exception);
+
+      // Act & Assert
+      await expect(controller.verifyEmail(validVerifyDto)).rejects.toThrow(
+        InvalidCredentialsException,
+      );
+
+      expect(authService.verifyEmail).toHaveBeenCalledWith(
+        validVerifyDto.token,
+      );
+    });
+  });
+
+  describe('resendEmailVerification', () => {
+    const validResendDto: ResendVerificationDto = {
+      email: 'test@example.com',
+    };
+
+    it('should successfully resend email verification', async () => {
+      // Arrange
+      authService.resendEmailVerification.mockResolvedValue(undefined);
+
+      // Act
+      const result = await controller.resendEmailVerification(validResendDto);
+
+      // Assert
+      expect(result).toEqual({
+        success: true,
+        message:
+          'If the email exists and is unverified, a verification email has been sent.',
+      });
+
+      expect(authService.resendEmailVerification).toHaveBeenCalledWith(
+        validResendDto.email,
+      );
+    });
+
+    it('should handle service errors gracefully', async () => {
+      // Arrange
+      const error = new Error('Service error');
+      authService.resendEmailVerification.mockRejectedValue(error);
+
+      // Act & Assert
+      await expect(
+        controller.resendEmailVerification(validResendDto),
+      ).rejects.toThrow('Service error');
+
+      expect(authService.resendEmailVerification).toHaveBeenCalledWith(
+        validResendDto.email,
+      );
     });
   });
 });
