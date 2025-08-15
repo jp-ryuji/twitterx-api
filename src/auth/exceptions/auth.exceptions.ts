@@ -166,3 +166,40 @@ export class OAuthProviderLinkException extends HttpException {
     );
   }
 }
+
+export class SuspiciousActivityException extends HttpException {
+  constructor(reason: string) {
+    super(
+      {
+        message: 'Suspicious activity detected',
+        reason,
+        code: 'SUSPICIOUS_ACTIVITY',
+      },
+      HttpStatus.FORBIDDEN,
+    );
+  }
+}
+
+export class ShadowBannedException extends HttpException {
+  constructor() {
+    super(
+      {
+        message: 'Account access restricted',
+        code: 'SHADOW_BANNED',
+      },
+      HttpStatus.FORBIDDEN,
+    );
+  }
+}
+
+export class InsufficientPermissionsException extends HttpException {
+  constructor(action: string) {
+    super(
+      {
+        message: `Insufficient permissions to perform action: ${action}`,
+        code: 'INSUFFICIENT_PERMISSIONS',
+      },
+      HttpStatus.FORBIDDEN,
+    );
+  }
+}

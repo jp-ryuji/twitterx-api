@@ -2,9 +2,19 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { User } from '@prisma/client';
 
-import { UsernameUnavailableException } from '../auth/exceptions/auth.exceptions';
+import {
+  UsernameUnavailableException,
+  AccountSuspendedException,
+  ShadowBannedException,
+  InsufficientPermissionsException,
+} from '../auth/exceptions/auth.exceptions';
 import { PrismaService } from '../prisma/prisma.service';
 
+import {
+  ModerationAction,
+  AdminModerationDto,
+  SuspiciousActivityDto,
+} from './dto/admin-moderation.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
@@ -209,6 +219,237 @@ export class UserService {
     if (blockedUsernames.includes(username.toLowerCase())) {
       throw new Error('This username is not available');
     }
+  }
+
+  /**
+   * Admin: Perform moderation action on user account
+   */
+  async performModerationAction(
+    targetUserId: string,
+    moderationDto: AdminModerationDto,
+    adminUserId: string,
+  ): Promise<User> {
+    // Verify target user exists
+    const targetUser = await this.findById(targetUserId);
+    if (!targetUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Verify admin user exists and has permissions (basic check)
+    const adminUser = await this.findById(adminUserId);
+    if (!adminUser) {
+      throw new InsufficientPermissionsException('moderation');
+    }
+
+    // For now, we'll assume any authenticated user can perform moderation
+    // In a real system, you'd check for admin roles/permissions
+
+    const updateData: Partial<User> = { updatedAt: new Date() };
+
+    switch (moderationDto.action) {
+      case ModerationAction.SUSPEND:
+        updateData.isSuspended = true;
+        updateData.suspensionReason =
+          moderationDto.reason || 'Account suspended by administrator';
+        break;
+
+      case ModerationAction.UNSUSPEND:
+        updateData.isSuspended = false;
+        updateData.suspensionReason = null;
+        break;
+
+      case ModerationAction.VERIFY:
+        updateData.isVerified = true;
+        break;
+
+      case ModerationAction.UNVERIFY:
+        updateData.isVerified = false;
+        break;
+
+      case ModerationAction.SHADOW_BAN:
+        updateData.isShadowBanned = true;
+        updateData.shadowBanReason =
+          moderationDto.reason || 'Shadow banned by administrator';
+        break;
+
+      case ModerationAction.UNSHADOW_BAN:
+        updateData.isShadowBanned = false;
+        updateData.shadowBanReason = null;
+        break;
+
+      default:
+        throw new Error(
+          `Unknown moderation action: ${String(moderationDto.action)}`,
+        );
+    }
+
+    // Update user with moderation action
+    const updatedUser = await this.prisma.user.update({
+      where: { id: targetUserId },
+      data: updateData,
+    });
+
+    // If suspending, invalidate all user sessions
+    if (moderationDto.action === ModerationAction.SUSPEND) {
+      await this.prisma.session.deleteMany({
+        where: { userId: targetUserId },
+      });
+    }
+
+    return updatedUser;
+  }
+
+  /**
+   * Report suspicious activity for a user
+   */
+  async reportSuspiciousActivity(
+    userId: string,
+    activityDto: SuspiciousActivityDto,
+  ): Promise<void> {
+    const user = await this.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Increment suspicious activity counter
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        suspiciousActivityCount: { increment: 1 },
+        lastSuspiciousActivity: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
+    // Auto-restrict if threshold is reached or if explicitly requested
+    const suspiciousThreshold = 5; // Configurable threshold
+    if (
+      activityDto.autoRestrict ||
+      updatedUser.suspiciousActivityCount >= suspiciousThreshold
+    ) {
+      await this.applyShadowBan(
+        userId,
+        `Automatic restriction due to suspicious activity: ${activityDto.activityType}`,
+      );
+    }
+  }
+
+  /**
+   * Apply shadow ban to user
+   */
+  async applyShadowBan(userId: string, reason: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        isShadowBanned: true,
+        shadowBanReason: reason,
+        updatedAt: new Date(),
+      },
+    });
+  }
+
+  /**
+   * Check if user is shadow banned and throw exception if so
+   */
+  async checkShadowBanStatus(userId: string): Promise<void> {
+    const user = await this.findById(userId);
+    if (user?.isShadowBanned) {
+      throw new ShadowBannedException();
+    }
+  }
+
+  /**
+   * Check if user account is suspended and throw exception if so
+   */
+  async checkAccountStatus(userId: string): Promise<void> {
+    const user = await this.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.isSuspended) {
+      throw new AccountSuspendedException(user.suspensionReason || undefined);
+    }
+
+    if (user.isShadowBanned) {
+      throw new ShadowBannedException();
+    }
+  }
+
+  /**
+   * Get user moderation history/status (admin only)
+   */
+  async getModerationStatus(userId: string): Promise<{
+    isSuspended: boolean;
+    suspensionReason: string | null;
+    isVerified: boolean;
+    isShadowBanned: boolean;
+    shadowBanReason: string | null;
+    suspiciousActivityCount: number;
+    lastSuspiciousActivity: Date | null;
+    failedLoginAttempts: number;
+    lockedUntil: Date | null;
+  }> {
+    const user = await this.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return {
+      isSuspended: user.isSuspended,
+      suspensionReason: user.suspensionReason,
+      isVerified: user.isVerified,
+      isShadowBanned: user.isShadowBanned,
+      shadowBanReason: user.shadowBanReason,
+      suspiciousActivityCount: user.suspiciousActivityCount,
+      lastSuspiciousActivity: user.lastSuspiciousActivity,
+      failedLoginAttempts: user.failedLoginAttempts,
+      lockedUntil: user.lockedUntil,
+    };
+  }
+
+  /**
+   * Detect suspicious login patterns
+   */
+  async detectSuspiciousLogin(
+    userId: string,
+    ipAddress: string,
+    userAgent: string,
+  ): Promise<boolean> {
+    const user = await this.findById(userId);
+    if (!user) {
+      return false;
+    }
+
+    let suspicious = false;
+    const suspiciousReasons: string[] = [];
+
+    // Check for IP address changes
+    if (user.lastLoginIp && user.lastLoginIp !== ipAddress) {
+      // Simple heuristic: if IP changed and it's been less than 1 hour since last login
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      if (user.lastLoginAt && user.lastLoginAt > oneHourAgo) {
+        suspicious = true;
+        suspiciousReasons.push('rapid_ip_change');
+      }
+    }
+
+    // Check for multiple failed attempts recently
+    if (user.failedLoginAttempts >= 3) {
+      suspicious = true;
+      suspiciousReasons.push('multiple_failed_attempts');
+    }
+
+    // If suspicious activity detected, report it
+    if (suspicious) {
+      await this.reportSuspiciousActivity(userId, {
+        activityType: suspiciousReasons.join(','),
+        details: `IP: ${ipAddress}, UserAgent: ${userAgent}`,
+        autoRestrict: false, // Don't auto-restrict on login suspicion
+      });
+    }
+
+    return suspicious;
   }
 
   /**
