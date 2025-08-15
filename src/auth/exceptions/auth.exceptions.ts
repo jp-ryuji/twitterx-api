@@ -203,3 +203,109 @@ export class InsufficientPermissionsException extends HttpException {
     );
   }
 }
+
+export class EmailVerificationRequiredException extends HttpException {
+  constructor() {
+    super(
+      {
+        message: 'Email verification is required to access this resource',
+        code: 'EMAIL_VERIFICATION_REQUIRED',
+        suggestion: 'Please check your email and verify your account',
+      },
+      HttpStatus.FORBIDDEN,
+    );
+  }
+}
+
+export class InvalidTokenException extends HttpException {
+  constructor(tokenType: string) {
+    super(
+      {
+        message: `Invalid or expired ${tokenType} token`,
+        code: 'INVALID_TOKEN',
+        tokenType,
+      },
+      HttpStatus.UNAUTHORIZED,
+    );
+  }
+}
+
+export class SessionExpiredException extends HttpException {
+  constructor() {
+    super(
+      {
+        message: 'Session has expired',
+        code: 'SESSION_EXPIRED',
+        suggestion: 'Please sign in again',
+      },
+      HttpStatus.UNAUTHORIZED,
+    );
+  }
+}
+
+export class SessionNotFoundException extends HttpException {
+  constructor() {
+    super(
+      {
+        message: 'Session not found',
+        code: 'SESSION_NOT_FOUND',
+        suggestion: 'Please sign in again',
+      },
+      HttpStatus.UNAUTHORIZED,
+    );
+  }
+}
+
+export class UserNotFoundException extends HttpException {
+  constructor(identifier?: string) {
+    super(
+      {
+        message: identifier
+          ? `User with ${identifier} not found`
+          : 'User not found',
+        code: 'USER_NOT_FOUND',
+      },
+      HttpStatus.NOT_FOUND,
+    );
+  }
+}
+
+export class EmailServiceException extends HttpException {
+  constructor(operation: string, error?: string) {
+    super(
+      {
+        message: `Email service error during ${operation}`,
+        code: 'EMAIL_SERVICE_ERROR',
+        operation,
+        error,
+      },
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
+  }
+}
+
+export class RedisConnectionException extends HttpException {
+  constructor(operation: string) {
+    super(
+      {
+        message: `Redis connection failed during ${operation}`,
+        code: 'REDIS_CONNECTION_ERROR',
+        operation,
+      },
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
+  }
+}
+
+export class DatabaseConnectionException extends HttpException {
+  constructor(operation: string) {
+    super(
+      {
+        message: `Database connection failed during ${operation}`,
+        code: 'DATABASE_CONNECTION_ERROR',
+        operation,
+      },
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
+  }
+}
