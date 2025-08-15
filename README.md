@@ -149,18 +149,61 @@ prisma/
 
 ## 📝 4. API & Documentation
 
-The API is documented using **Swagger** (OpenAPI). While the application is running, the interactive documentation is available at:
+The API features comprehensive **Swagger/OpenAPI** documentation with interactive testing capabilities. While the application is running, the documentation is available at:
 
-`http://localhost:3000/api`
+**🔗 [http://localhost:3000/api](http://localhost:3000/api)**
 
-This UI allows for easy exploration and testing of all endpoints, such as:
+### 📚 Documentation Features
 
-* `POST /v1/auth/login`
-* `GET /v1/users/:username`
-* `POST /v1/tweets`
-* `GET /v1/timeline`
-* `POST /v1/users/:userId/follow`
-* `GET /v1/healthz` (Health check endpoint)
+* **Interactive Testing**: Test all endpoints directly from the browser
+* **Authentication Support**: Built-in support for session tokens and OAuth2
+* **Comprehensive Examples**: Detailed request/response examples for all endpoints
+* **Error Documentation**: Complete error response schemas with helpful error codes
+* **Multiple Auth Schemes**: Session tokens, Bearer tokens, and Google OAuth2
+
+### 🔐 Authentication Endpoints
+
+* `POST /v1/auth/signup` - User registration with email verification
+* `POST /v1/auth/signin` - User login with session management
+* `GET /v1/auth/google` - Google OAuth initiation
+* `GET /v1/auth/callback/google` - Google OAuth callback
+* `POST /v1/auth/signout` - Sign out (current or all sessions)
+* `POST /v1/auth/password/reset/request` - Request password reset
+* `POST /v1/auth/password/reset` - Reset password with token
+* `POST /v1/auth/email/verify` - Verify email address
+* `POST /v1/auth/email/resend-verification` - Resend verification email
+
+### 👤 User Management Endpoints
+
+* `GET /v1/users/profile` - Get current user profile
+* `PUT /v1/users/profile` - Update user profile
+* `PUT /v1/users/username` - Change username
+* `GET /v1/users/sessions` - List active sessions
+* `DELETE /v1/users/sessions/:sessionId` - Revoke specific session
+* `DELETE /v1/users/sessions` - Revoke all other sessions
+* `DELETE /v1/users/account` - Deactivate account
+
+### 🛡️ Admin Endpoints
+
+* `POST /v1/users/admin/moderate/:userId` - User moderation actions
+* `GET /v1/users/admin/moderation-status/:userId` - Get moderation status
+* `POST /v1/users/admin/report-suspicious/:userId` - Report suspicious activity
+
+### 🏥 Health Check
+
+* `GET /healthz` - System health check (database, Redis)
+
+### 📖 Additional Documentation
+
+* **[API Examples](docs/api-examples.md)** - Comprehensive request/response examples
+* **[Swagger Setup](docs/swagger-setup.md)** - Detailed documentation setup guide
+
+### 🔧 Testing with Swagger UI
+
+1. **Authentication**: Use the `/v1/auth/signin` endpoint to get a session token
+2. **Authorization**: Click "Authorize" and enter: `Bearer <your_session_token>`
+3. **Testing**: All protected endpoints can now be tested interactively
+4. **Error Handling**: View detailed error responses with helpful error codes
 
 ## ✅ 5. Testing
 
