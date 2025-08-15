@@ -1,5 +1,11 @@
-import { INestApplication, VersioningType } from '@nestjs/common';
+import {
+  INestApplication,
+  ValidationPipe,
+  VersioningType,
+} from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+
+import { GlobalExceptionFilter } from './common/filters';
 
 /**
  * Configures a NestJS application with common settings used in both
@@ -11,6 +17,21 @@ export function configureApp(app: INestApplication): INestApplication {
     type: VersioningType.URI,
     defaultVersion: '1',
   });
+
+  // Configure global validation pipe
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
+    }),
+  );
+
+  // Configure global exception filter
+  app.useGlobalFilters(new GlobalExceptionFilter());
 
   return app;
 }
