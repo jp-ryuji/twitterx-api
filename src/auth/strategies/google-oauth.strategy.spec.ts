@@ -167,7 +167,7 @@ describe('GoogleOAuthStrategy', () => {
         mockDone,
       );
 
-      expect(mockDone).toHaveBeenCalledWith(error, null);
+      expect(mockDone).toHaveBeenCalledWith(error, false);
     });
 
     it('should handle profile with unverified email', async () => {
