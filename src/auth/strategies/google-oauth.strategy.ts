@@ -2,7 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 
-import { Strategy, VerifyCallback } from 'passport-google-oauth20';
+import {
+  Strategy,
+  VerifyCallback,
+  StrategyOptions,
+} from 'passport-google-oauth20';
 
 import {
   GoogleOAuthService,
@@ -16,11 +20,11 @@ export class GoogleOAuthStrategy extends PassportStrategy(Strategy, 'google') {
     private readonly googleOAuthService: GoogleOAuthService,
   ) {
     super({
-      clientID: configService.get<string>('GOOGLE_CLIENT_ID'),
-      clientSecret: configService.get<string>('GOOGLE_CLIENT_SECRET'),
-      callbackURL: configService.get<string>('GOOGLE_CALLBACK_URL'),
+      clientID: configService.get<string>('GOOGLE_CLIENT_ID')!,
+      clientSecret: configService.get<string>('GOOGLE_CLIENT_SECRET')!,
+      callbackURL: configService.get<string>('GOOGLE_CALLBACK_URL')!,
       scope: ['openid', 'email', 'profile'],
-    });
+    } as StrategyOptions);
   }
 
   async validate(
@@ -63,7 +67,7 @@ export class GoogleOAuthStrategy extends PassportStrategy(Strategy, 'google') {
 
       done(null, result);
     } catch (error) {
-      done(error, null);
+      done(error, false);
     }
   }
 }

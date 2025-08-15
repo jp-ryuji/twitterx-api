@@ -619,7 +619,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new InvalidCredentialsException('Invalid or expired reset token');
+      throw new InvalidCredentialsException();
     }
 
     // Hash new password
@@ -658,7 +658,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new InvalidCredentialsException('Invalid verification token');
+      throw new InvalidCredentialsException();
     }
 
     // Mark email as verified and clear token
