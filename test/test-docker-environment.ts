@@ -24,14 +24,31 @@ class TestDockerEnvironment extends TestEnvironment {
     process.env.TEST_POSTGRES_PORT_EXTERNAL = '5434';
     process.env.TEST_REDIS_PORT_EXTERNAL = '6380';
 
+    // Clean up any existing containers/networks
+    try {
+      execSync(
+        `docker compose -p ${this.projectName} -f ${this.dockerComposeFile} down --remove-orphans`,
+        {
+          stdio: 'pipe',
+        },
+      );
+    } catch (error) {
+      // Ignore errors during cleanup
+    }
+
     // Start the test database
     console.log('Starting test database...');
-    execSync(
-      `docker compose -p ${this.projectName} -f ${this.dockerComposeFile} up -d`,
-      {
-        stdio: 'inherit',
-      },
-    );
+    try {
+      execSync(
+        `docker compose -p ${this.projectName} -f ${this.dockerComposeFile} up -d`,
+        {
+          stdio: 'inherit',
+        },
+      );
+    } catch (error) {
+      console.error('Failed to start Docker containers:', error);
+      throw error;
+    }
 
     // Wait for the database to be ready
     console.log('Waiting for database to be ready...');
@@ -40,6 +57,22 @@ class TestDockerEnvironment extends TestEnvironment {
     // Set the DATABASE_URL environment variable for the test database
     process.env.DATABASE_URL =
       'postgresql://testuser:testpassword@localhost:5434/testdb';
+
+    // Run database migrations
+    console.log('Running database migrations...');
+    try {
+      execSync('npx prisma migrate deploy', {
+        stdio: 'inherit',
+        env: {
+          ...process.env,
+          DATABASE_URL:
+            'postgresql://testuser:testpassword@localhost:5434/testdb',
+        },
+      });
+    } catch (error) {
+      console.error('Failed to run migrations:', error);
+      throw error;
+    }
 
     await super.setup();
   }
@@ -51,7 +84,7 @@ class TestDockerEnvironment extends TestEnvironment {
     console.log('Stopping test database...');
     try {
       execSync(
-        `docker compose -p ${this.projectName} -f ${this.dockerComposeFile} down`,
+        `docker compose -p ${this.projectName} -f ${this.dockerComposeFile} down --remove-orphans`,
         {
           stdio: 'inherit',
         },
