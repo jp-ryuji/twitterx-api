@@ -6,6 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 
 import { SignUpDto, SignInDto } from './dto';
+import { UserResponseDto } from './dto/auth-response.dto';
 import {
   UsernameUnavailableException,
   EmailAlreadyExistsException,
@@ -29,10 +30,35 @@ export class AuthService {
   ) {}
 
   /**
+   * Maps a Prisma User object to a UserResponseDto
+   */
+  private mapUserToResponseDto(user: User): UserResponseDto {
+    return {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      displayName: user.displayName,
+      bio: user.bio,
+      location: user.location,
+      websiteUrl: user.websiteUrl,
+      profilePicturePath: user.profilePicturePath,
+      headerImagePath: user.headerImagePath,
+      emailVerified: user.emailVerified,
+      isVerified: user.isVerified,
+      isPrivate: user.isPrivate,
+      followerCount: user.followerCount,
+      followingCount: user.followingCount,
+      tweetCount: user.tweetCount,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+  }
+
+  /**
    * Register a new user with email/password
    */
   async registerUser(signUpDto: SignUpDto): Promise<{
-    user: Omit<User, 'password' | 'emailVerificationToken'>;
+    user: UserResponseDto;
     emailVerificationToken?: string | undefined;
   }> {
     const { username, email, password, displayName, birthDate } = signUpDto;
@@ -49,35 +75,34 @@ export class AuthService {
     const sanitizedEmail = email ? SecurityUtils.sanitizeEmail(email) : null;
     const sanitizedDisplayName = displayName
       ? SecurityUtils.sanitizeText(displayName)
-      : null;
-
-    // Generate case-insensitive versions for uniqueness checking
+      : sanitizedUsername;
     const usernameLower = sanitizedUsername.toLowerCase();
-    const emailLower = sanitizedEmail?.toLowerCase() || null;
 
-    // Check for existing username (case-insensitive)
-    const existingUserByUsername = await this.prisma.user.findUnique({
+    // Check if username is available
+    const usernameExists = await this.prisma.user.findUnique({
       where: { usernameLower },
     });
 
-    if (existingUserByUsername) {
+    if (usernameExists) {
+      // Generate suggestions
       const suggestions =
         await this.generateUsernameSuggestions(sanitizedUsername);
       throw new UsernameUnavailableException(sanitizedUsername, suggestions);
     }
 
-    // Check for existing email (case-insensitive) if email is provided
-    if (emailLower) {
-      const existingUserByEmail = await this.prisma.user.findUnique({
+    // Check if email is provided and available
+    let emailLower: string | null = null;
+    if (sanitizedEmail) {
+      emailLower = sanitizedEmail.toLowerCase();
+      const emailExists = await this.prisma.user.findUnique({
         where: { emailLower },
       });
 
-      if (existingUserByEmail) {
-        throw new EmailAlreadyExistsException(sanitizedEmail!);
+      if (emailExists) {
+        throw new EmailAlreadyExistsException(sanitizedEmail);
       }
     }
 
-    // Hash password
     const hashedPassword = await this.passwordService.hashPassword(password);
 
     // Generate email verification token if email is provided
@@ -108,16 +133,11 @@ export class AuthService {
         `User registered successfully: ${user.username} (${user.id})`,
       );
 
-      // Return user without sensitive fields
-
-      const {
-        password: _password,
-        emailVerificationToken: _token,
-        ...userWithoutSensitiveData
-      } = user;
+      // Map to response DTO
+      const userResponse = this.mapUserToResponseDto(user);
 
       return {
-        user: userWithoutSensitiveData,
+        user: userResponse,
         emailVerificationToken,
       };
     } catch (error: unknown) {
@@ -205,7 +225,7 @@ export class AuthService {
       deviceInfo?: string;
     },
   ): Promise<{
-    user: Omit<User, 'password' | 'emailVerificationToken'>;
+    user: UserResponseDto;
     sessionToken: string;
     expiresAt: Date;
     tokens: TokenPair;
@@ -273,19 +293,15 @@ export class AuthService {
       },
     );
 
-    // Return user without sensitive fields
-    const {
-      password: _password,
-      emailVerificationToken: _token,
-      ...userWithoutSensitiveData
-    } = user;
-
     this.logger.log(
       `User signed in successfully: ${user.username} (${user.id})`,
     );
 
+    // Map to response DTO
+    const userResponse = this.mapUserToResponseDto(user);
+
     return {
-      user: userWithoutSensitiveData,
+      user: userResponse,
       sessionToken: session.sessionToken,
       expiresAt: session.expiresAt,
       tokens,
@@ -504,7 +520,7 @@ export class AuthService {
       deviceInfo?: string;
     },
   ): Promise<{
-    user: Omit<User, 'password' | 'emailVerificationToken'>;
+    user: UserResponseDto;
     sessionToken: string;
     expiresAt: Date;
     tokens: TokenPair;
@@ -536,19 +552,15 @@ export class AuthService {
       },
     );
 
-    // Return user without sensitive fields
-    const {
-      password: _password,
-      emailVerificationToken: _token,
-      ...userWithoutSensitiveData
-    } = user;
-
     this.logger.log(
       `OAuth session created for user: ${user.username} (${user.id})`,
     );
 
+    // Map to response DTO
+    const userResponse = this.mapUserToResponseDto(user);
+
     return {
-      user: userWithoutSensitiveData,
+      user: userResponse,
       sessionToken: session.sessionToken,
       expiresAt: session.expiresAt,
       tokens,
