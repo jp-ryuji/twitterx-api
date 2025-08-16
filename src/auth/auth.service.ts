@@ -14,6 +14,7 @@ import {
   InvalidCredentialsException,
   AccountLockedException,
   AccountSuspendedException,
+  InvalidTokenException,
 } from './exceptions';
 import { PasswordService, SessionService, TokenPair } from './services';
 import { SecurityUtils } from './utils';
@@ -631,7 +632,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new InvalidCredentialsException();
+      throw new InvalidTokenException('password reset');
     }
 
     // Hash new password
@@ -670,7 +671,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new InvalidCredentialsException();
+      throw new InvalidTokenException('email verification');
     }
 
     // Mark email as verified and clear token
