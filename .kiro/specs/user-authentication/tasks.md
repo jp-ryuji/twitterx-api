@@ -109,7 +109,7 @@
   - Configure Swagger UI with proper authentication schemes
   - _Requirements: 8.5, 8.1_
 
-- [ ] 17. Create integration tests for authentication flows
+- [x] 17. Create integration tests for authentication flows
   - Write integration tests for complete registration flow with database
   - Test login flow with session creation and Redis integration
   - Create tests for OAuth flow with mocked external services
