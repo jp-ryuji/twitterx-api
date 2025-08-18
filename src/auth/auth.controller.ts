@@ -41,7 +41,7 @@ import { GoogleOAuthService } from './services';
 import type { Request } from 'express';
 
 @ApiTags('Authentication')
-@Controller('v1/auth')
+@Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,

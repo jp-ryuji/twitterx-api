@@ -1,27 +1,27 @@
 import {
-  Controller,
-  Get,
-  Put,
-  Delete,
-  Post,
   Body,
-  Param,
-  UseGuards,
-  Request,
+  Controller,
+  Delete,
+  Get,
   HttpCode,
   HttpStatus,
+  Param,
   ParseUUIDPipe,
+  Post,
+  Put,
+  Request,
+  UseGuards,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
+  ApiOperation,
   ApiParam,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { SessionService, SessionInfo } from '../auth/services/session.service';
+import { SessionInfo, SessionService } from '../auth/services/session.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 import {
@@ -42,7 +42,7 @@ interface AuthenticatedRequest extends Request {
 }
 
 @ApiTags('User Management')
-@Controller('v1/users')
+@Controller('users')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class UserController {

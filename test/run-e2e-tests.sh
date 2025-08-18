@@ -14,6 +14,10 @@ fi
 DOCKER_COMPOSE_FILE="docker-compose.test.yml"
 PROJECT_NAME="twitterx-api-e2e-test"
 
+# Clean up any existing containers
+echo "Cleaning up existing test environment..."
+docker compose -p "$PROJECT_NAME" -f "$DOCKER_COMPOSE_FILE" down --remove-orphans 2>/dev/null || true
+
 # Start the test database
 echo "Starting test database with project name: $PROJECT_NAME"
 docker compose -p "$PROJECT_NAME" -f "$DOCKER_COMPOSE_FILE" up -d
@@ -28,13 +32,18 @@ done
 # Set the DATABASE_URL environment variable for tests
 export DATABASE_URL="postgresql://${TEST_DB_USERNAME}:${TEST_DB_PASSWORD}@localhost:${TEST_POSTGRES_PORT_EXTERNAL}/${TEST_DB_NAME}"
 
+# Run database migrations
+echo "Running database migrations..."
+npx prisma migrate deploy
+
 # Run the tests
-jest --config ./test/jest-e2e.json
+echo "Running tests..."
+npx jest --config ./test/jest-e2e.json
 EXIT_CODE=$?
 
 # Stop the test database
 echo "Stopping test database..."
-docker compose -p "$PROJECT_NAME" -f "$DOCKER_COMPOSE_FILE" down
+docker compose -p "$PROJECT_NAME" -f "$DOCKER_COMPOSE_FILE" down --remove-orphans
 
 # Exit with the same code as the tests
 exit $EXIT_CODE
