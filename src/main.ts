@@ -1,5 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 
+import cookieParser from 'cookie-parser';
+
 import { configureApp, configureSwagger } from './app.factory';
 import { AppModule } from './app.module';
 import { PrismaService } from './prisma/prisma.service';
@@ -9,6 +11,9 @@ async function bootstrap() {
 
   // Apply common application configuration
   configureApp(app);
+
+  // Add cookie parser middleware for CSRF protection
+  app.use(cookieParser());
 
   // Configure Swagger for production
   configureSwagger(app);

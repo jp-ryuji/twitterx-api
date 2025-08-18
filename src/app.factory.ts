@@ -33,6 +33,9 @@ export function configureApp(app: INestApplication): INestApplication {
   // Configure global exception filter
   app.useGlobalFilters(new GlobalExceptionFilter());
 
+  // Middleware is applied in the AppModule configuration, not here
+  // See app.module.ts for middleware registration
+
   return app;
 }
 
