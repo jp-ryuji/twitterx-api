@@ -10,19 +10,19 @@ import {
   Post,
   Put,
   Request,
-  UseGuards,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
   ApiOperation,
   ApiParam,
   ApiResponse,
   ApiTags,
-  ApiConsumes,
-  ApiBody,
 } from '@nestjs/swagger';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -259,16 +259,22 @@ export class UserController {
     status: 401,
     description: 'Unauthorized - Invalid or missing token',
   })
-  async uploadProfilePicture(
+  uploadProfilePicture(
     @Request() req: AuthenticatedRequest,
     @UploadedFile() file: Express.Multer.File,
   ) {
     // Implementation would go here
     // For now, we'll return a placeholder response
+    let filename: string | undefined;
+    if (file) {
+      const fileAny = file;
+      if ('filename' in fileAny && typeof fileAny.filename === 'string') {
+        filename = fileAny.filename;
+      }
+    }
     return {
       id: req.user.userId,
-      profilePicturePath:
-        file && file.filename ? `/uploads/profiles/${file.filename}` : null,
+      profilePicturePath: filename ? `/uploads/profiles/${filename}` : null,
       updatedAt: new Date().toISOString(),
     };
   }
@@ -311,16 +317,22 @@ export class UserController {
     status: 401,
     description: 'Unauthorized - Invalid or missing token',
   })
-  async uploadHeaderImage(
+  uploadHeaderImage(
     @Request() req: AuthenticatedRequest,
     @UploadedFile() file: Express.Multer.File,
   ) {
     // Implementation would go here
     // For now, we'll return a placeholder response
+    let filename: string | undefined;
+    if (file) {
+      const fileAny = file;
+      if ('filename' in fileAny && typeof fileAny.filename === 'string') {
+        filename = fileAny.filename;
+      }
+    }
     return {
       id: req.user.userId,
-      headerImagePath:
-        file && file.filename ? `/uploads/headers/${file.filename}` : null,
+      headerImagePath: filename ? `/uploads/headers/${filename}` : null,
       updatedAt: new Date().toISOString(),
     };
   }
