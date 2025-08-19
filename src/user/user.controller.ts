@@ -11,13 +11,18 @@ import {
   Put,
   Request,
   UseGuards,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
   ApiOperation,
   ApiParam,
   ApiResponse,
   ApiTags,
+  ApiConsumes,
+  ApiBody,
 } from '@nestjs/swagger';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -213,6 +218,110 @@ export class UserController {
       location: updatedUser.location,
       websiteUrl: updatedUser.websiteUrl,
       updatedAt: updatedUser.updatedAt,
+    };
+  }
+
+  @Post('profile-picture')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  @ApiOperation({
+    summary: 'Upload profile picture',
+    description: 'Upload a new profile picture for the user',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Profile picture uploaded successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        profilePicturePath: { type: 'string', nullable: true },
+        updatedAt: { type: 'string', format: 'date-time' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad request - Invalid file',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Invalid or missing token',
+  })
+  async uploadProfilePicture(
+    @Request() req: AuthenticatedRequest,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    // Implementation would go here
+    // For now, we'll return a placeholder response
+    return {
+      id: req.user.userId,
+      profilePicturePath:
+        file && file.filename ? `/uploads/profiles/${file.filename}` : null,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  @Post('header-image')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  @ApiOperation({
+    summary: 'Upload header image',
+    description: 'Upload a new header image for the user profile',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Header image uploaded successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        headerImagePath: { type: 'string', nullable: true },
+        updatedAt: { type: 'string', format: 'date-time' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad request - Invalid file',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Invalid or missing token',
+  })
+  async uploadHeaderImage(
+    @Request() req: AuthenticatedRequest,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    // Implementation would go here
+    // For now, we'll return a placeholder response
+    return {
+      id: req.user.userId,
+      headerImagePath:
+        file && file.filename ? `/uploads/headers/${file.filename}` : null,
+      updatedAt: new Date().toISOString(),
     };
   }
 
