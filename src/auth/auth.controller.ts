@@ -245,6 +245,8 @@ export class AuthController {
       user: result.user,
       sessionToken: result.sessionToken,
       expiresAt: result.expiresAt,
+      accessToken: result.tokens.accessToken,
+      refreshToken: result.tokens.refreshToken,
     };
   }
 

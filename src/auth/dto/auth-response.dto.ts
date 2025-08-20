@@ -137,6 +137,12 @@ export class AuthResponseDto {
   accessToken?: string;
 
   @ApiPropertyOptional({
+    description: 'JWT refresh token (for login responses)',
+    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+  })
+  refreshToken?: string;
+
+  @ApiPropertyOptional({
     description: 'Token type (for login responses)',
     example: 'Bearer',
   })
