@@ -1,8 +1,11 @@
-onlyBuiltDependencies:
-  - '@nestjs/core'
-  - '@prisma/client'
-  - '@prisma/engines'
-  - '@scarf/scarf'
-  - bcrypt
-  - prisma
-  - unrs-resolver
+packages:
+  - '.'
+settings:
+  onlyBuiltDependencies:
+    - '@nestjs/core'
+    - '@prisma/client'
+    - '@prisma/engines'
+    - '@scarf/scarf'
+    - bcrypt
+    - prisma
+    - unrs-resolver
