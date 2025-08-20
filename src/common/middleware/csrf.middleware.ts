@@ -55,7 +55,7 @@ export class CsrfMiddleware implements NestMiddleware {
       this.logAndSendError(
         req,
         res,
-        'CSRF_TOKEN_MISSING',
+        'SUSPICIOUS_ACTIVITY',
         'CSRF token missing',
       );
       return;
@@ -65,7 +65,7 @@ export class CsrfMiddleware implements NestMiddleware {
       this.logAndSendError(
         req,
         res,
-        'CSRF_TOKEN_MISMATCH',
+        'SUSPICIOUS_ACTIVITY',
         'CSRF token mismatch',
       );
       return;
@@ -76,7 +76,7 @@ export class CsrfMiddleware implements NestMiddleware {
       this.logAndSendError(
         req,
         res,
-        'INVALID_CSRF_TOKEN',
+        'SUSPICIOUS_ACTIVITY',
         'Invalid or expired CSRF token',
       );
       return;
@@ -88,7 +88,11 @@ export class CsrfMiddleware implements NestMiddleware {
   private logAndSendError(
     req: CustomRequest,
     res: Response,
-    type: string,
+    type:
+      | 'SUSPICIOUS_ACTIVITY'
+      | 'RATE_LIMIT_EXCEEDED'
+      | 'ACCOUNT_LOCKED'
+      | 'FAILED_LOGIN',
     message: string,
   ) {
     this.monitoringService.logSecurityEvent({

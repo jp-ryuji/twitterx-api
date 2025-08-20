@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Req, Res } from '@nestjs/common';
 
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
 
 // Define a custom request type that includes user, session, and CSRF properties
 interface CustomRequest extends Request {
