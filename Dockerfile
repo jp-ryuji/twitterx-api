@@ -9,11 +9,11 @@ COPY . .
 RUN pnpm prisma:generate
 CMD ["pnpm", "run", "start:dev"]
 
-# 2. Build stage for creating a production build
+# 2. Build stage (compiles TypeScript to JavaScript)
 FROM development AS build
 RUN pnpm run build
 
-# 3. Production stage
+# 3. Production stage (installs only production dependencies)
 FROM node:22-alpine AS production
 WORKDIR /usr/src/app
 # Install only production dependencies
