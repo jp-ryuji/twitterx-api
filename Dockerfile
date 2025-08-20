@@ -16,9 +16,11 @@ RUN pnpm run build
 # 3. Production stage
 FROM node:22-alpine AS production
 WORKDIR /usr/src/app
+# Install only production dependencies
+COPY package.json ./
+COPY pnpm-lock.yaml ./
+RUN pnpm install --prod
 COPY --from=build /usr/src/app/dist ./dist
-COPY --from=build /usr/src/app/node_modules ./node_modules
-COPY --from=build /usr/src/app/package.json .
 # Copy prisma schema for regeneration
 COPY --from=build /usr/src/app/prisma ./prisma
 # Regenerate Prisma client for the production environment
