@@ -349,6 +349,8 @@ describe('AuthController', () => {
         user: mockUser,
         sessionToken: 'session-token-123',
         expiresAt: mockSignInResult.expiresAt,
+        accessToken: mockTokens.accessToken,
+        refreshToken: mockTokens.refreshToken,
       });
 
       expect(authService.signIn).toHaveBeenCalledWith(validSignInDto, {
