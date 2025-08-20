@@ -1,5 +1,5 @@
 export * from './sign-in.dto';
-export * from './sign-up.dto';
+export { SignUpDto } from './sign-up.dto';
 export * from './sign-up-enhanced.dto';
 export * from './auth-response.dto';
 export * from './email-verification.dto';
