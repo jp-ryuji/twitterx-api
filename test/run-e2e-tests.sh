@@ -10,8 +10,8 @@ if [ -f .env.test.local ]; then
   set +a
 fi
 
-# Define the docker-compose file and project name
-DOCKER_COMPOSE_FILE="docker-compose.test.yml"
+# Define the compose file and project name
+DOCKER_COMPOSE_FILE="compose.test.yml"
 PROJECT_NAME="twitterx-api-e2e-test"
 
 # Clean up any existing containers
