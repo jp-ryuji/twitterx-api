@@ -30,14 +30,52 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'pnpm'
 
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Cache Docker images
+      uses: actions/cache@v3
+      with:
+        path: /tmp/.docker-cache
+        key: ${{ runner.os }}-docker-${{ hashFiles('compose.test.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-docker-
+
+    - name: Pull Docker images
+      run: |
+        mkdir -p /tmp/.docker-cache
+        cd /tmp/.docker-cache
+        if [ ! -f postgres.tar ]; then
+          docker pull postgres:17
+          docker save postgres:17 > postgres.tar
+        fi
+        if [ ! -f redis.tar ]; then
+          docker pull redis:8
+          docker save redis:8 > redis.tar
+        fi
+
+    - name: Load Docker images
+      run: |
+        cd /tmp/.docker-cache
+        docker load < postgres.tar
+        docker load < redis.tar
+
     - name: Install dependencies
       run: pnpm install --frozen-lockfile
+
+    - name: Generate Prisma Client
+      run: pnpm prisma:generate
 
     - name: Run linter
       run: pnpm lint
 
     - name: Run tests
       run: pnpm test
+
+    - name: Run e2e tests
+      run: |
+        cp .env.test.local.example .env.test.local
+        pnpm test:e2e
 
     - name: Run build
       run: pnpm build
@@ -63,6 +101,9 @@ jobs:
 
     - name: Install dependencies
       run: pnpm install --frozen-lockfile
+
+    - name: Generate Prisma Client
+      run: pnpm prisma:generate
 
     - name: Run security audit
       run: pnpm audit
