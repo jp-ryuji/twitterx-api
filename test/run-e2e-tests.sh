@@ -24,13 +24,13 @@ docker compose -p "$PROJECT_NAME" -f "$DOCKER_COMPOSE_FILE" up -d
 
 # Wait for the database to be ready
 echo "Waiting for database to be ready..."
-until docker compose -p "$PROJECT_NAME" -f "$DOCKER_COMPOSE_FILE" exec postgres-test pg_isready -U "$TEST_DB_USERNAME" -d "$TEST_DB_NAME" > /dev/null 2>&1
+until docker compose -p "$PROJECT_NAME" -f "$DOCKER_COMPOSE_FILE" exec postgres-test pg_isready -U "$TEST_DB_USER" -d "$TEST_DB_NAME" > /dev/null 2>&1
 do
     sleep 1
 done
 
 # Set the DATABASE_URL environment variable for tests
-export DATABASE_URL="postgresql://${TEST_DB_USERNAME}:${TEST_DB_PASSWORD}@localhost:${TEST_POSTGRES_PORT_EXTERNAL}/${TEST_DB_NAME}"
+export DATABASE_URL="postgresql://${TEST_DB_USER}:${TEST_DB_PASSWORD}@localhost:${TEST_DB_PORT_EXTERNAL}/${TEST_DB_NAME}"
 
 # Run database migrations
 echo "Running database migrations..."
