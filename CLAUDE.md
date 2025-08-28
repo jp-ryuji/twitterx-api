@@ -4,67 +4,79 @@ This document provides essential context for AI models interacting with this pro
 
 ## 1. Project Overview & Purpose
 
-* **Primary Goal:** This project is a REST API backend built with NestJS. Based on the name "twitterx-api", it is likely intended to be an API for a social media application with functionality similar to Twitter/X.
+* **Primary Goal:** This is a REST API backend for a social media application that replicates core functionalities of X (formerly Twitter). It serves as a portfolio piece demonstrating proficiency in modern backend engineering with NestJS, TypeScript, and Prisma.
 * **Business Domain:** Social Media
 
 ## 2. Core Technologies & Stack
 
 * **Languages:** TypeScript
-* **Frameworks & Runtimes:** Node.js, NestJS, Express.js
-* **Databases:** PostgreSQL
+* **Frameworks & Runtimes:** Node.js v22, NestJS, Express.js
+* **Databases:** PostgreSQL (primary), Redis (for sessions)
 * **Key Libraries/Dependencies:**
-  * `@nestjs/common`, `@nestjs/core`, `@nestjs/platform-express`: Core NestJS libraries.
-  * `rxjs`: Reactive programming library, a core dependency of NestJS.
-  * `jest`: Testing framework.
-  * `prettier`: Code formatter.
-  * `eslint`: Linter.
+  * `@nestjs/common`, `@nestjs/core`, `@nestjs/platform-express`: Core NestJS libraries
+  * `@nestjs/jwt`, `@nestjs/passport`: Authentication
+  * `@nestjs/swagger`: API documentation
+  * `@prisma/client`: Database ORM
+  * `bcrypt`: Password hashing
+  * `class-transformer`, `class-validator`: Data validation and transformation
+  * `passport`, `passport-google-oauth20`, `passport-jwt`: Authentication strategies
+  * `redis`: Redis client
+  * `nodemailer`: Email sending
+  * `rxjs`: Reactive programming
 * **Package Manager(s):** pnpm
 
 ## 3. Architectural Patterns
 
-* **Overall Architecture:** The project follows the modular architecture inherent to NestJS. It appears to be a monolithic application.
+* **Overall Architecture:** Modular monolithic application built with NestJS. Features are organized into modules (auth, user, etc.) that are self-contained and import shared services like Prisma for database access.
 * **Directory Structure Philosophy:**
-  * `/src`: Contains all primary source code, organized by NestJS modules, controllers, and services.
-  * `/test`: Contains end-to-end tests.
-  * `nest-cli.json`: NestJS CLI configuration file.
-  * `tsconfig.json`: TypeScript compiler configuration.
-  * `eslint.config.mjs`: ESLint configuration for code linting.
+  * `/src`: Contains all primary source code, organized by NestJS modules
+  * `/src/auth`: Authentication (JWT, OAuth) functionality
+  * `/src/user`: User management
+  * `/src/prisma`: Prisma service for database access
+  * `/src/common`: Shared modules, services, guards, filters
+  * `/prisma`: Prisma schema and migrations
+  * `/test`: End-to-end tests
+  * `/docs`: API documentation
 
 ## 4. Coding Conventions & Style Guide
 
-* **Formatting:** The project uses Prettier for code formatting. The configuration is likely in `.prettierrc` or the `prettier` key in `package.json`. The command `npm run format` can be used to format the code.
-* **Naming Conventions:** Based on the initial files, the project follows standard TypeScript and NestJS conventions:
+* **Formatting:** Prettier with single quotes and trailing commas. 2-space indentation. Unix-style line endings (LF). Files must end with a newline.
+* **Naming Conventions:**
   * `variables`, `functions`: camelCase (`myVariable`)
-  * `classes`, `components`: PascalCase (`AppService`)
-  * `files`: kebab-case for modules and components (`app.controller.ts`)
-* **API Design:** (Inferred) As a NestJS project, it will follow RESTful principles. Endpoints are defined in controllers and are typically plural nouns. It uses standard HTTP verbs (GET, POST, PUT, DELETE). JSON is used for request/response bodies.
-* **Error Handling:** (Inferred) NestJS has built-in exception handling. Custom error handling can be implemented using exception filters.
-* **File Requirements:** All files must end with exactly one newline character to prevent "No newline at end of file" linting warnings and ensure POSIX compliance.
+  * `classes`, `components`: PascalCase (`MyClass`)
+  * `files`: kebab-case (`my-component.ts`)
+* **API Design:** RESTful principles with URI-based versioning (e.g., `/v1/users`). Uses standard HTTP verbs (GET, POST, PUT, DELETE). JSON for request/response bodies. Comprehensive Swagger documentation.
+* **Error Handling:** Global exception filter for consistent error responses. Custom exception classes for specific error cases.
 
 ## 5. Key Files & Entrypoints
 
-* **Main Entrypoint(s):** `src/main.ts` is the main entrypoint of the application.
+* **Main Entrypoint(s):** `src/main.ts`
 * **Configuration:**
-  * `package.json`: Defines project metadata, dependencies, and scripts.
-  * `nest-cli.json`: NestJS-specific configuration.
-  * `tsconfig.json`: TypeScript configuration.
-* **CI/CD Pipeline:** No CI/CD pipeline is configured at this time.
+  * `.env` (environment variables)
+  * `src/app.module.ts` (NestJS module configuration)
+  * `prisma/schema.prisma` (database schema)
+* **CI/CD Pipeline:** GitHub Actions workflows (inferred from recent commits)
 
 ## 6. Development & Testing Workflow
 
 * **Local Development Environment:**
-  * To install dependencies: `pnpm install`
-  * To run the development server: `npm run start:dev`
+    1. Install dependencies with `pnpm install`
+    2. Set up environment with `cp .env.example .env`
+    3. Start services with `docker compose up -d`
+    4. Run migrations with `pnpm prisma migrate dev`
+    5. Start development server with `pnpm run start:dev`
+
 * **Testing:**
-  * To run unit tests: `npm test`
-  * To run end-to-end tests: `npm run test:e2e`
-  * Tests are written with Jest and Supertest. Test files are located in `src` for unit tests (`.spec.ts`) and `test` for e2e tests (`.e2e-spec.ts`).
-* **CI/CD Process:** No CI/CD process is currently defined.
+  * Unit tests: `pnpm run test`
+  * End-to-end tests: `pnpm run test:e2e` (automatically manages test database)
+  * Test coverage: `pnpm run test:cov`
+  * Uses Jest for testing framework and mocks Prisma for unit tests
+
+* **CI/CD Process:** GitHub Actions for continuous integration
 
 ## 7. Specific Instructions for AI Collaboration
 
-* **Contribution Guidelines:** No `CONTRIBUTING.md` file was found. It is recommended to create one.
-* **Infrastructure (IaC):** No Infrastructure as Code directory was found.
-* **Security:** Be mindful of security. Do not hardcode secrets or keys. Ensure any changes to authentication logic are secure and vetted.
-* **Dependencies:** When adding a new dependency, use `pnpm add <package-name>` or `pnpm add -D <package-name>` for development dependencies.
-* **Commit Messages:** No specific commit message format is enforced. It is recommended to follow the Conventional Commits specification (e.g., `feat:`, `fix:`, `docs:`). Commit package.json and lock file changes separately, including the names of added or deleted packages in the message (e.g., 'chore: add lodash', 'chore: remove moment.js').
+* **Infrastructure (IaC):** Docker Compose is used for local development and testing environments. Changes to `compose.yml` or `Dockerfile` affect the deployment environment.
+* **Security:** Do not hardcode secrets or keys. Authentication logic uses JWT tokens and sessions. Passwords are properly hashed with bcrypt. OAuth2 flows are implemented for Google authentication.
+* **Dependencies:** When adding a new dependency, use `pnpm add <package>` for production dependencies or `pnpm add -D <package>` for development dependencies.
+* **Commit Messages:** Follow conventional commits format (e.g., `feat:`, `fix:`, `docs:`). Package.json and lock file changes should be committed separately, including the names of added or deleted packages.
