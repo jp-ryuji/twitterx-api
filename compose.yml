@@ -21,18 +21,18 @@ services:
   postgres:
     image: postgres:17
     ports:
-      - '${POSTGRES_PORT_EXTERNAL:-5433}:5432'
+      - '${DB_PORT_EXTERNAL:-5433}:5432'
     environment:
-      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_USER=${DB_USER}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_DB=${DB_NAME}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME} -d ${DB_NAME}']
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER} -d ${DB_NAME}']
       interval: 1s
       timeout: 3s
-      retries: 20
+      retries: 5
 
   redis:
     image: redis:8
@@ -44,7 +44,7 @@ services:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 1s
       timeout: 3s
-      retries: 30
+      retries: 5
 
 volumes:
   postgres_data:
