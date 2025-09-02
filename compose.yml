@@ -5,7 +5,8 @@ services:
       dockerfile: Dockerfile
       target: development
     volumes:
-      - .:/usr/src/app
+      - .:/app                  # Mount entire project
+      - /app/node_modules       # Anonymous volume for node_modules
     ports:
       - '${APP_PORT_EXTERNAL:-3002}:3000'
     depends_on:
