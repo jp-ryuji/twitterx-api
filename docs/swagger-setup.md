@@ -27,6 +27,7 @@ http://localhost:3000/api
 The API documentation includes three authentication schemes:
 
 #### Bearer Token Authentication
+
 ```yaml
 securitySchemes:
   bearer:
@@ -38,6 +39,7 @@ securitySchemes:
 Used for JWT-based authentication (future implementation).
 
 #### Session Token Authentication
+
 ```yaml
 securitySchemes:
   session:
@@ -49,6 +51,7 @@ securitySchemes:
 Used for session-based authentication with format: `Bearer <session_token>`
 
 #### Google OAuth2
+
 ```yaml
 securitySchemes:
   google-oauth:
@@ -79,6 +82,7 @@ All endpoints include detailed error response schemas with:
 - Additional context (suggestions, retry information)
 
 Example error response:
+
 ```json
 {
   "statusCode": 409,
@@ -125,7 +129,7 @@ export function configureSwagger(app: INestApplication): void {
     .addTag('Authentication', 'User registration, login, and OAuth endpoints')
     // ... more configuration
     .build();
-    
+
   // ... document setup
 }
 ```
@@ -135,6 +139,7 @@ export function configureSwagger(app: INestApplication): void {
 All Data Transfer Objects (DTOs) include comprehensive Swagger decorators:
 
 ### Example: SignUpDto
+
 ```typescript
 export class SignUpDto {
   @ApiProperty({
@@ -148,7 +153,7 @@ export class SignUpDto {
   @Length(3, 15)
   @Matches(/^[a-zA-Z0-9_]+$/)
   username: string;
-  
+
   // ... more properties
 }
 ```
@@ -158,6 +163,7 @@ export class SignUpDto {
 All controllers include comprehensive endpoint documentation:
 
 ### Example: AuthController
+
 ```typescript
 @ApiTags('Authentication')
 @Controller('v1/auth')
@@ -310,6 +316,7 @@ node scripts/verify-swagger.js
 ```
 
 This script will:
+
 - Start the application
 - Verify Swagger UI is accessible
 - Check for configuration errors

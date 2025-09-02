@@ -73,6 +73,8 @@ Follow these steps to set up and run the project locally.
     docker compose down -v
     ```
 
+See [Docker Volume Configuration](docs/docker-volumes.md) for details on our Docker volume setup that ensures cross-platform compatibility.
+
 5. **Run database migrations with Prisma:**
     This command will create the database if it doesn't exist, apply all pending migrations, and generate the Prisma Client.
 
