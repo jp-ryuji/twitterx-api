@@ -18,6 +18,8 @@ services:
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+    # Automatically install dependencies on every startup
+    command: sh -c "pnpm install && pnpm run start:dev"
 
   postgres:
     image: postgres:17

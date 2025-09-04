@@ -19,26 +19,15 @@ This configuration:
 1. **Cross-Platform Compatibility**: Works reliably between macOS development and Alpine Linux containers
 2. **File System Isolation**: Prevents issues with binary modules
 3. **Source Code Synchronization**: All source code changes are immediately reflected in containers
+4. **Automatic Dependency Management**: Dependencies are automatically checked and installed when containers start
 
 ## Workflow
 
 When adding new packages:
 
 1. Install new packages locally: `pnpm add <package>`
-2. Update containers by running install in the container:
-
-   ```bash
-   # For API service
-   docker exec -it twitterx-api-app-1 pnpm install
-   ```
-
-   Or use the convenience script:
-
-   ```bash
-   pnpm docker:sync
-   ```
-
-3. No need to rebuild containers for dependency changes
+2. Restart the container to automatically install new dependencies: `pnpm docker:restart`
+3. Alternatively, manually sync dependencies with: `pnpm docker:sync`
 
 ## Why Not Direct node_modules Mounting?
 
@@ -48,4 +37,4 @@ Directly mounting `./node_modules:/app/node_modules` can cause issues:
 2. **File System Differences**: Different file systems can cause permission and performance issues
 3. **Path Issues**: Different operating systems handle paths differently
 
-The anonymous volume approach provides better isolation while still allowing immediate source code synchronization.
+The anonymous volume approach provides better isolation while still allowing immediate source code synchronization and automated dependency management.

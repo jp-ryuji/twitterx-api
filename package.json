@@ -24,7 +24,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "docker:sync": "./scripts/sync-deps.sh",
+    "docker:sync": "docker compose exec app pnpm install",
+    "docker:restart": "docker compose restart app",
     "prepare": "husky"
   },
   "dependencies": {

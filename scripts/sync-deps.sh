@@ -6,6 +6,7 @@ echo "Syncing dependencies to Docker containers..."
 
 # Sync API dependencies
 echo "Syncing API dependencies..."
-docker exec -it twitterx-api-app-1 pnpm install
+# Using docker compose to ensure we're targeting the correct container
+docker compose exec app pnpm install
 
 echo "Dependency sync completed!"
